@@ -37,8 +37,17 @@ public class Main {
       }
       int length = Integer.parseInt(bencodedString.substring(0, firstColonIndex));
       return bencodedString.substring(firstColonIndex+1, firstColonIndex+1+length);
+    } else if(bencodedString.charAt(0) == 'i') {
+      int end = 0;
+      for(int i = 1; i < bencodedString.length(); i++){
+        if(bencodedString.charAt(i) == 'e'){
+          end = i;
+          break;
+        }
+      }
+      return bencodedString.substring(1, end);
     } else {
-      throw new RuntimeException("Only strings are supported at the moment");
+      throw new RuntimeException("Unsupported format");
     }
   }
   
