@@ -29,7 +29,7 @@ public class Main {
         return decodeBencodeNumber(message);
       }
       case String message when message.charAt(0) == 'l' ->{
-        return gson.toJson(decodeBencodeString(message));
+        return gson.toJson(decodeBencodeList(message));
       }
       default ->{
         throw new RuntimeException("Unsupported format");
