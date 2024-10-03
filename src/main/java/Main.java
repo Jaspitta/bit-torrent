@@ -1,4 +1,5 @@
 import com.google.gson.Gson;
+import java.lang.Character;
 // import com.dampcake.bencode.Bencode; - available if you need it!
 
 public class Main {
@@ -10,26 +11,28 @@ public class Main {
     String command = args[0];
     if("decode".equals(command)) {
       //  Uncomment this block to pass the first stage
-       String bencodedValue = args[1];
-       String decoded;
-       try {
-         decoded = decodeBencode(bencodedValue);
-       } catch(RuntimeException e) {
-         System.out.println(e.getMessage());
-         return;
-       }
-       System.out.println(gson.toJson(decoded));
+      String bencodedValue = args[1];
+      switch(bencodedValue){
+        case String message when Character.isDigit(message.charAt(0)) ->{
+          System.out.println(gson.toJson(decodeBencodeString(message)));
+        }
+        case String message when message.charAt(0) == 'i' ->{
+          System.out.println(decodeBencodeNumber(message));
+        }
+        default ->{
+          throw new RuntimeException("Unsupported format");
+        }
 
+      }
     } else {
       System.out.println("Unknown command: " + command);
     }
 
   }
 
-  static String decodeBencode(String bencodedString) {
-    if (Character.isDigit(bencodedString.charAt(0))) {
+  static String decodeBencodeString(String bencodedString) {
       int firstColonIndex = 0;
-      for(int i = 0; i < bencodedString.length(); i++) { 
+      for(int i = 0; i < bencodedString.length(); i++) {
         if(bencodedString.charAt(i) == ':') {
           firstColonIndex = i;
           break;
@@ -37,18 +40,9 @@ public class Main {
       }
       int length = Integer.parseInt(bencodedString.substring(0, firstColonIndex));
       return bencodedString.substring(firstColonIndex+1, firstColonIndex+1+length);
-    } else if(bencodedString.charAt(0) == 'i') {
-      int end = 0;
-      for(int i = 1; i < bencodedString.length(); i++){
-        if(bencodedString.charAt(i) == 'e'){
-          end = i;
-          break;
-        }
-      }
-      return bencodedString.substring(1, end);
-    } else {
-      throw new RuntimeException("Unsupported format");
-    }
   }
-  
+
+  static Integer decodeBencodeNumber(String bencodedString) {
+      return Integer.parseInt(bencodedString.substring(1, bencodedString.length() - 1));
+  }
 }
