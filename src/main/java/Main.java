@@ -22,7 +22,6 @@ public class Main {
         default ->{
           throw new RuntimeException("Unsupported format");
         }
-
       }
     } else {
       System.out.println("Unknown command: " + command);
@@ -42,7 +41,8 @@ public class Main {
       return bencodedString.substring(firstColonIndex+1, firstColonIndex+1+length);
   }
 
-  static Integer decodeBencodeNumber(String bencodedString) {
-      return Integer.parseInt(bencodedString.substring(1, bencodedString.length() - 1));
+  static String decodeBencodeNumber(String bencodedString) {
+      return bencodedString.substring(1, bencodedString.length() - 1);
   }
+
 }
