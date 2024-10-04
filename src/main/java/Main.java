@@ -56,9 +56,9 @@ public class Main {
       return bencodedString.substring(firstColonIndex+1, firstColonIndex+1+length);
     }
 
-    Integer decodeBencodeNumber(String bencodedString) {
+    Long decodeBencodeNumber(String bencodedString) {
       this.end = bencodedString.indexOf('e');
-      return Integer.valueOf(bencodedString.substring(1, this.end));
+      return Long.valueOf(bencodedString.substring(1, this.end));
     }
 
     List<Object> decodeBencodeList(String bencodeString){
