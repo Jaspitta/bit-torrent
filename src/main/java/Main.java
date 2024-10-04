@@ -11,7 +11,7 @@ public class Main {
     String command = args[0];
     if("decode".equals(command)) {
       String bencodedValue = args[1];
-      System.out.println(new Main().new DecodedMessage(bencodedValue).decodeMessage());
+      System.out.println(gson.toJson(new Main().new DecodedMessage(bencodedValue).decodeMessage()));
     } else {
       System.out.println("Unknown command: " + command);
     }
@@ -29,13 +29,13 @@ public class Main {
     Object decodeMessage(){
       switch(this.originalMessage){
         case String message when Character.isDigit(message.charAt(0)) ->{
-          return gson.toJson(decodeBencodeString(message));
+          return decodeBencodeString(message);
         }
         case String message when message.charAt(0) == 'i' ->{
           return decodeBencodeNumber(message);
         }
         case String message when message.charAt(0) == 'l' ->{
-          return gson.toJson(decodeBencodeList(message));
+          return decodeBencodeList(message);
         }
         default ->{
           throw new RuntimeException("Unsupported format");
@@ -85,6 +85,7 @@ public class Main {
           }
         }
       }
+      this.end = bencodeString.length() - messageCopy.length();
       return resp;
     }
 
