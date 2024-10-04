@@ -8,8 +8,6 @@ public class Main {
   private static final Gson gson = new Gson();
 
   public static void main(String[] args) throws Exception {
-    // You can use print statements as follows for debugging, they'll be visible when running tests.
-    // System.out.println("Logs from your program will appear here!");
     String command = args[0];
     if("decode".equals(command)) {
       String bencodedValue = args[1];
@@ -38,17 +36,19 @@ public class Main {
   }
 
   static List<Object> decodeBencodeList(String bencodeString){
-        var messageCopy = bencodeString.substring(1, bencodeString.length() - 2);
+        if(bencodeString == null || bencodeString.length() < 3) return new ArrayList<Object>();
+
+        var messageCopy = bencodeString.substring(1, bencodeString.length() - 1);
         var resp = new ArrayList<Object>();
         while(messageCopy.length() > 1){
           switch(messageCopy){
             case String messageTemp when Character.isDigit(messageTemp.charAt(0)) ->{
-              resp.add(decodeBencodeString(messageCopy));
-              messageCopy = messageCopy.substring(Integer.valueOf(messageCopy.substring(0, messageCopy.indexOf(':'))) + 2);
+              resp.add(decodeBencodeString(messageTemp));
+              messageCopy = messageTemp.substring(Integer.valueOf(messageTemp.substring(0, messageTemp.indexOf(':'))) + 2);
             }
             case String messageTemp when messageTemp.charAt(0) == 'i' ->{
-              resp.add(decodeBencodeNumber(messageCopy));
-              messageCopy = messageCopy.substring(messageCopy.indexOf('e') + 1);
+              resp.add(decodeBencodeNumber(messageTemp));
+              messageCopy = messageTemp.substring(messageTemp.indexOf('e') + 1);
             }
             default ->{
               throw new RuntimeException("Unsupported format");
@@ -70,8 +70,8 @@ public class Main {
     return bencodedString.substring(firstColonIndex+1, firstColonIndex+1+length);
   }
 
-  static String decodeBencodeNumber(String bencodedString) {
-    return bencodedString.substring(1, bencodedString.indexOf('e'));
+  static Integer decodeBencodeNumber(String bencodedString) {
+    return Integer.valueOf(bencodedString.substring(1, bencodedString.indexOf('e')));
   }
 
 }
