@@ -11,71 +11,83 @@ public class Main {
     String command = args[0];
     if("decode".equals(command)) {
       String bencodedValue = args[1];
-      System.out.println(decodeBencodeMessage(bencodedValue));
+      System.out.println(new Main().new DecodedMessage(bencodedValue).decodeMessage());
     } else {
       System.out.println("Unknown command: " + command);
     }
 
   }
 
-  static Object decodeBencodeMessage(String bencodedMessage){
-    switch(bencodedMessage){
-      case String message when Character.isDigit(message.charAt(0)) ->{
-        return gson.toJson(decodeBencodeString(message));
-      }
-      case String message when message.charAt(0) == 'i' ->{
-        return decodeBencodeNumber(message);
-      }
-      case String message when message.charAt(0) == 'l' ->{
-        return gson.toJson(decodeBencodeList(message));
-      }
-      default ->{
-        throw new RuntimeException("Unsupported format");
-      }
+  public class DecodedMessage {
+    private String originalMessage;
+    private Integer end;
+
+    public DecodedMessage(String message){
+      this.originalMessage = message;
     }
-  }
 
-  static List<Object> decodeBencodeList(String bencodeString){
-    if(bencodeString == null || bencodeString.length() < 3) return new ArrayList<Object>();
-
-    var messageCopy = bencodeString.substring(1, bencodeString.length() - 1);
-    var resp = new ArrayList<Object>();
-    while(messageCopy.length() > 1){
-      switch(messageCopy){
-        case String messageTemp when Character.isDigit(messageTemp.charAt(0)) ->{
-          resp.add(decodeBencodeString(messageTemp));
-          messageCopy = messageTemp.substring(Integer.valueOf(messageTemp.substring(0, messageTemp.indexOf(':'))) + 2);
+    Object decodeMessage(){
+      switch(this.originalMessage){
+        case String message when Character.isDigit(message.charAt(0)) ->{
+          return gson.toJson(decodeBencodeString(message));
         }
-        case String messageTemp when messageTemp.charAt(0) == 'i' ->{
-          resp.add(decodeBencodeNumber(messageTemp));
-          messageCopy = messageTemp.substring(messageTemp.indexOf('e') + 1);
+        case String message when message.charAt(0) == 'i' ->{
+          return decodeBencodeNumber(message);
         }
-        case String messageTemp when messageTemp.charAt(0) == 'l' ->{
-          resp.add(decodeBencodeList(messageTemp));
-          messageCopy = messageTemp.substring(messageTemp.lastIndexOf('e') + 1);
+        case String message when message.charAt(0) == 'l' ->{
+          return gson.toJson(decodeBencodeList(message));
         }
         default ->{
           throw new RuntimeException("Unsupported format");
         }
       }
     }
-    return resp;
-  }
 
-  static String decodeBencodeString(String bencodedString) {
-    int firstColonIndex = 0;
-    for(int i = 0; i < bencodedString.length(); i++) {
-      if(bencodedString.charAt(i) == ':') {
-        firstColonIndex = i;
-        break;
+    String decodeBencodeString(String bencodedString) {
+      int firstColonIndex = 0;
+      for(int i = 0; i < bencodedString.length(); i++) {
+        if(bencodedString.charAt(i) == ':') {
+          firstColonIndex = i;
+          break;
+        }
       }
+      int length = Integer.parseInt(bencodedString.substring(0, firstColonIndex));
+      this.end = firstColonIndex+length;
+      return bencodedString.substring(firstColonIndex+1, firstColonIndex+1+length);
     }
-    int length = Integer.parseInt(bencodedString.substring(0, firstColonIndex));
-    return bencodedString.substring(firstColonIndex+1, firstColonIndex+1+length);
-  }
 
-  static Integer decodeBencodeNumber(String bencodedString) {
-    return Integer.valueOf(bencodedString.substring(1, bencodedString.indexOf('e')));
+    Integer decodeBencodeNumber(String bencodedString) {
+      this.end = bencodedString.indexOf('e');
+      return Integer.valueOf(bencodedString.substring(1, this.end));
+    }
+
+    List<Object> decodeBencodeList(String bencodeString){
+      if(bencodeString == null || bencodeString.length() < 3) return new ArrayList<Object>();
+
+      var messageCopy = bencodeString.substring(1);
+      var resp = new ArrayList<Object>();
+      while(messageCopy.length() > 1 && messageCopy.charAt(0) != 'e'){
+        switch(messageCopy){
+          case String messageTemp when Character.isDigit(messageTemp.charAt(0)) ->{
+            resp.add(decodeBencodeString(messageTemp));
+            messageCopy = messageTemp.substring(this.end+1);
+          }
+          case String messageTemp when messageTemp.charAt(0) == 'i' ->{
+            resp.add(decodeBencodeNumber(messageTemp));
+            messageCopy = messageTemp.substring(this.end+1);
+          }
+          case String messageTemp when messageTemp.charAt(0) == 'l' ->{
+            resp.add(decodeBencodeList(messageTemp));
+            messageCopy = messageTemp.substring(this.end + 1);
+          }
+          default ->{
+            throw new RuntimeException("Unsupported format");
+          }
+        }
+      }
+      return resp;
+    }
+
   }
 
 }
