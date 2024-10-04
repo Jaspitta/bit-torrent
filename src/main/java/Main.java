@@ -36,26 +36,30 @@ public class Main {
   }
 
   static List<Object> decodeBencodeList(String bencodeString){
-        if(bencodeString == null || bencodeString.length() < 3) return new ArrayList<Object>();
+    if(bencodeString == null || bencodeString.length() < 3) return new ArrayList<Object>();
 
-        var messageCopy = bencodeString.substring(1, bencodeString.length() - 1);
-        var resp = new ArrayList<Object>();
-        while(messageCopy.length() > 1){
-          switch(messageCopy){
-            case String messageTemp when Character.isDigit(messageTemp.charAt(0)) ->{
-              resp.add(decodeBencodeString(messageTemp));
-              messageCopy = messageTemp.substring(Integer.valueOf(messageTemp.substring(0, messageTemp.indexOf(':'))) + 2);
-            }
-            case String messageTemp when messageTemp.charAt(0) == 'i' ->{
-              resp.add(decodeBencodeNumber(messageTemp));
-              messageCopy = messageTemp.substring(messageTemp.indexOf('e') + 1);
-            }
-            default ->{
-              throw new RuntimeException("Unsupported format");
-            }
-          }
+    var messageCopy = bencodeString.substring(1, bencodeString.length() - 1);
+    var resp = new ArrayList<Object>();
+    while(messageCopy.length() > 1){
+      switch(messageCopy){
+        case String messageTemp when Character.isDigit(messageTemp.charAt(0)) ->{
+          resp.add(decodeBencodeString(messageTemp));
+          messageCopy = messageTemp.substring(Integer.valueOf(messageTemp.substring(0, messageTemp.indexOf(':'))) + 2);
         }
-        return resp;
+        case String messageTemp when messageTemp.charAt(0) == 'i' ->{
+          resp.add(decodeBencodeNumber(messageTemp));
+          messageCopy = messageTemp.substring(messageTemp.indexOf('e') + 1);
+        }
+        case String messageTemp when messageTemp.charAt(0) == 'l' ->{
+          resp.add(decodeBencodeList(messageTemp));
+          messageCopy = messageTemp.substring(messageTemp.lastIndexOf('e') + 1);
+        }
+        default ->{
+          throw new RuntimeException("Unsupported format");
+        }
+      }
+    }
+    return resp;
   }
 
   static String decodeBencodeString(String bencodedString) {
