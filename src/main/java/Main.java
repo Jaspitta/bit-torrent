@@ -18,7 +18,7 @@ public class Main {
       case "decode":{
         String bencodedValue = args[1];
         var index = new Main().new Reference<Integer>(0);
-        System.out.println(formatToString(decodeMessage(bencodedValue.getBytes(), index)));
+        System.out.println(gson.toJson(formatToString(decodeMessage(bencodedValue.getBytes(), index))));
       }
       break;
       case "info":{
