@@ -30,7 +30,7 @@ public class Main {
         // I am ok with this crashing if the expectations are not met;
         assert formattedFileContent instanceof Map;
         String url = ((Map<Object, String>)formattedFileContent).get("announce");
-        String length = ((Map<Object, Map<String, String>>)formattedFileContent).get("info").get("length");
+        Long length = ((Map<Object, Map<String, Long>>)formattedFileContent).get("info").get("length");
         System.out.println("Tracker URL: "+ url);
         System.out.println("Length: "+ length);
       }
@@ -50,8 +50,8 @@ public class Main {
         Object result = new Object();
         switch(message){
             case String s -> result = s;
-            case Integer i -> result = i.toString();
-            case Long ln -> result = ln.toString();
+            case Integer i -> result = i;
+            case Long ln -> result = ln;
             case List ls -> {
                 assert ls != null;
                 var tmp = new ArrayList<Object>();
@@ -110,7 +110,7 @@ public class Main {
     );
   }
 
-  public static byte[] decodeBencodeNumber(byte[] bencodedString, Reference<Integer> index) {
+  public static Object decodeBencodeNumber(byte[] bencodedString, Reference<Integer> index) {
     if(bencodedString == null) return null;
     assert index.getValue() < bencodedString.length - 1;
 
@@ -119,7 +119,8 @@ public class Main {
     index.setValue(end);
 
     assert begin <= end;
-    return Arrays.copyOfRange(bencodedString, begin, end);
+
+    return Long.valueOf(new String(Arrays.copyOfRange(bencodedString, begin, end)));
   }
 
   public static List<Object> decodeBencodeList(byte[] bencodedString, Reference<Integer> index){
