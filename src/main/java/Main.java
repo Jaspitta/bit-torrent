@@ -69,6 +69,23 @@ public class Main {
                 // System.out.println(byteArrayToHexString(md.digest()));
 
             }
+            case "test": {
+                String fileName = args[1];
+                byte[] fileAsByteArr = Files.readAllBytes(Paths.get(fileName));
+                var md = MessageDigest.getInstance("SHA-1");
+                md.update(fileAsByteArr);
+                System.out.println("hash from file is: " + byteArrayToHexString(md.digest()));
+
+                var index = new Main().new Reference<Integer>(0);
+                md = MessageDigest.getInstance("SHA-1");
+                md.update("d3:foo5:grape5:helloi52ee".getBytes());
+                System.out.println("hash from string is: " + byteArrayToHexString(md.digest()));
+
+                var encodedMessage = encodeMessage(decodeMessage(fileAsByteArr, index));
+                md = MessageDigest.getInstance("SHA-1");
+                md.update(encodedMessage);
+                System.out.println("hash from decoded/encoded message: " + byteArrayToHexString(md.digest()));
+            }
             break;
             default:
             throw new RuntimeException("unsupported operation");
