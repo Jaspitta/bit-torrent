@@ -31,45 +31,28 @@ public class Main {
             break;
             case "info":{
                 assert args.length > 1 && args[1] != null && !args[1].isEmpty();
-                var index = new Main().new Reference<Integer>(0);
-                String fileName = args[1];
-                byte[] fileAsByteArr = Files.readAllBytes(Paths.get(fileName));
-                System.out.println("Initial file to sha1: ");
+
+                var decodedMessage = decodeMessage(
+                    Files.readAllBytes(Paths.get(args[1])),
+                    new Main().new Reference<Integer>(0)
+                );
+
+                Object formattedFileContent = formatToString(decodedMessage, Set.of("announce", "info", "length"));
+                // I am ok with this crashing if the expectations are not met;
+                assert formattedFileContent instanceof Map;
+                String url = (String)((Map<Object, Object>)formattedFileContent).get("announce");
+                Object info = ((Map<String, Object>)formattedFileContent).get("info");
+                Long length = ((Map<String, Long>)info).get("length");
+                System.out.println("Tracker URL: "+ url);
+                System.out.println("Length: "+ length);
+
                 var md = MessageDigest.getInstance("SHA-1");
-                md.update(fileAsByteArr);
-                System.out.println(byteArrayToHexString(md.digest()));
-
-                var decodedMessage = decodeMessage(fileAsByteArr, index);
-                var encodedMessage = encodeMessage(decodedMessage);
-                // System.out.println(new String(encodedMessage));
-                // for(int i = 0; i < fileAsByteArr.length; i++){
-                //    System.out.println("from file is " + fileAsByteArr[i] + ", encoded is " + encodedMessage[i]);
-                // }
-                // var byteOut = new ByteArrayOutputStream();
-                // var out = new ObjectOutputStream(byteOut);
-                // out.writeObject(encodeMessage(decodedMessage));
-                System.out.println("Re-encoded message to sha1");
-                md = MessageDigest.getInstance("SHA-1");
-                md.update(encodedMessage);
-                System.out.println(byteArrayToHexString(md.digest()));
-                // Object formattedFileContent = formatToString(decodedMessage, Set.of("announce", "info", "length"));
-                // // I am ok with this crashing if the expectations are not met;
-                // assert formattedFileContent instanceof Map;
-                // String url = (String)((Map<Object, Object>)formattedFileContent).get("announce");
-                // Object info = ((Map<String, Object>)formattedFileContent).get("info");
-                // Long length = ((Map<String, Long>)info).get("length");
-                // System.out.println("Tracker URL: "+ url);
-                // System.out.println("Length: "+ length);
-
-                // var byteOut = new ByteArrayOutputStream();
-                // var out = new ObjectOutputStream(byteOut);
-                // out.writeObject(encodeMessage(info));
-                // var md = MessageDigest.getInstance("SHA-1");
-                // md.update(byteOut.toByteArray());
-                // System.out.println(byteArrayToHexString(md.digest()));
-
+                md.update(encodeMessage(info));
+                System.out.println("Info content hash: " + byteArrayToHexString(md.digest()));
             }
+            break;
             case "test": {
+                // JUST FOR TESTING
                 String fileName = args[1];
                 byte[] fileAsByteArr = Files.readAllBytes(Paths.get(fileName));
                 var md = MessageDigest.getInstance("SHA-1");
