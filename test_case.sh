@@ -6,3 +6,5 @@ do
 done
 
 java -ea -jar ./target/java_bittorrent.jar "info" "sample.torrent"
+
+sha1sum ./sample2.torrent 

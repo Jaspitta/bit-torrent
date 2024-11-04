@@ -6,10 +6,12 @@ import java.security.MessageDigest;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
+import java.util.LinkedHashSet;
 
 import com.google.gson.Gson;
 
@@ -24,6 +26,7 @@ public class Main {
                 String bencodedValue = args[1];
                 var index = new Main().new Reference<Integer>(0);
                 System.out.println(gson.toJson(formatToString(decodeMessage(bencodedValue.getBytes(), index))));
+                System.out.println(new String(encodeMessage(decodeMessage(bencodedValue.getBytes(), new Main().new Reference<Integer>(0)))));
             }
             break;
             case "info":{
@@ -31,26 +34,38 @@ public class Main {
                 var index = new Main().new Reference<Integer>(0);
                 String fileName = args[1];
                 byte[] fileAsByteArr = Files.readAllBytes(Paths.get(fileName));
-                var decodedMessage = decodeMessage(fileAsByteArr, index);
-                Object formattedFileContent = formatToString(decodedMessage, Set.of("announce", "info", "length"));
-                // I am ok with this crashing if the expectations are not met;
-                assert formattedFileContent instanceof Map;
-                String url = (String)((Map<Object, Object>)formattedFileContent).get("announce");
-                Long length = ((Map<Object, Map<Object, Long>>)formattedFileContent).get("info").get("length");
-                System.out.println("Tracker URL: "+ url);
-                System.out.println("Length: "+ length);
+                System.out.println("Initial file to sha1: ");
+                var md = MessageDigest.getInstance("SHA-1");
+                md.update(fileAsByteArr);
+                System.out.println(byteArrayToHexString(md.digest()));
 
-                // var info = ((Map<Object, Object>)formatToString(decodedMessage, Set.of("info"))).get("info");
+                var decodedMessage = decodeMessage(fileAsByteArr, index);
+                var encodedMessage = encodeMessage(decodedMessage);
+                // System.out.println(new String(encodedMessage));
+                // for(int i = 0; i < fileAsByteArr.length; i++){
+                //    System.out.println("from file is " + fileAsByteArr[i] + ", encoded is " + encodedMessage[i]);
+                // }
                 // var byteOut = new ByteArrayOutputStream();
                 // var out = new ObjectOutputStream(byteOut);
-                // out.writeObject(info);
-                // // var md = MessageDigest.getInstance("SHA-1");
-                // // md.update(byteOut.toByteArray());
-                // // System.out.println(byteArrayToHexString(md.digest()));
+                // out.writeObject(encodeMessage(decodedMessage));
+                System.out.println("Re-encoded message to sha1");
+                md = MessageDigest.getInstance("SHA-1");
+                md.update(encodedMessage);
+                System.out.println(byteArrayToHexString(md.digest()));
+                // Object formattedFileContent = formatToString(decodedMessage, Set.of("announce", "info", "length"));
+                // // I am ok with this crashing if the expectations are not met;
+                // assert formattedFileContent instanceof Map;
+                // String url = (String)((Map<Object, Object>)formattedFileContent).get("announce");
+                // Object info = ((Map<String, Object>)formattedFileContent).get("info");
+                // Long length = ((Map<String, Long>)info).get("length");
+                // System.out.println("Tracker URL: "+ url);
+                // System.out.println("Length: "+ length);
+
+                // var byteOut = new ByteArrayOutputStream();
+                // var out = new ObjectOutputStream(byteOut);
+                // out.writeObject(encodeMessage(info));
                 // var md = MessageDigest.getInstance("SHA-1");
-                // System.out.println(String.valueOf(fileAsByteArr[104]));
-                // System.out.println(String.valueOf(fileAsByteArr[235]));
-                // md.update(Arrays.copyOfRange(fileAsByteArr, 104, 279));
+                // md.update(byteOut.toByteArray());
                 // System.out.println(byteArrayToHexString(md.digest()));
 
             }
@@ -248,7 +263,7 @@ public class Main {
         if(bencodedString == null) return null;
         if(bencodedString.length == 0) return new HashMap<byte[], Object>();
 
-        var decodedDic = new HashMap<byte[], Object>();
+        var decodedDic = new LinkedHashMap<byte[], Object>();
         while(index.getValue() + 2 < bencodedString.length && bencodedString[index.getValue() + 1] != 'e'){
             index.setValue(index.getValue()+1); // move to the begin of the next element, assuming we left off at the last
             // TODO: check the next is a string?
@@ -269,19 +284,17 @@ public class Main {
         var respByte = new ArrayList<Byte>();
         Set<Map.Entry> set = dic.entrySet();
         for(Entry entry : set){
-            var partialMessage = encodeMessage(entry.getKey());
-            for(byte tmp : partialMessage)
+            for(byte tmp : encodeMessage(entry.getKey()))
                 respByte.add(Byte.valueOf(tmp));
-            partialMessage = encodeMessage(entry.getValue());
-            for(byte tmp : partialMessage)
+            for(byte tmp : encodeMessage(entry.getValue()))
                 respByte.add(Byte.valueOf(tmp));
         }
 
         var resp = new byte[respByte.size() + 2];
         resp[0] = (byte)'d';
         resp[resp.length - 1] = (byte)'e';
-        for(int i = 1; i < respByte.size() - 1; i++){
-            resp[i] = respByte.get(i).byteValue();
+        for(int i = 1; i < resp.length - 1; i++){
+            resp[i] = respByte.get(i-1).byteValue();
         }
         return resp;
     }
