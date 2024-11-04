@@ -43,12 +43,17 @@ public class Main {
                 String url = (String)((Map<Object, Object>)formattedFileContent).get("announce");
                 Object info = ((Map<String, Object>)formattedFileContent).get("info");
                 Long length = ((Map<String, Long>)info).get("length");
-                System.out.println("Tracker URL: "+ url);
-                System.out.println("Length: "+ length);
-
                 var md = MessageDigest.getInstance("SHA-1");
                 md.update(encodeMessage(info));
                 System.out.println("Info content hash: " + byteArrayToHexString(md.digest()));
+
+                Long pieceLength = ((Map<String, Long>)info).get("piece length");
+                byte[] pieceHashes = ((Map<String, byte[]>)info).get("pieces");
+                System.out.println("Tracker URL: "+ url);
+                System.out.println("Length: "+ length);
+                System.out.println("Piece Length: "+ pieceLength);
+                System.out.println("Piece Hashes: "+ byteArrayToHexString(pieceHashes));
+
             }
             break;
             case "test": {
