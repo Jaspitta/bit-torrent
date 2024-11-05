@@ -48,12 +48,12 @@ public class Main {
                 System.out.println("Info content hash: " + byteArrayToHexString(md.digest()));
 
                 Long pieceLength = ((Map<String, Long>)info).get("piece length");
-                byte[] pieceHashes = ((Map<String, byte[]>)info).get("pieces");
+                byte[][] pieceHashesFormatted = formatHashPieces(((Map<String, byte[]>)info).get("pieces"), 20);
                 System.out.println("Tracker URL: "+ url);
                 System.out.println("Length: "+ length);
                 System.out.println("Piece Length: "+ pieceLength);
-                System.out.println("Piece Hashes: "+ byteArrayToHexString(pieceHashes));
-
+                System.out.println("Piece Hashes: ");
+                for(byte[] arr : pieceHashesFormatted) System.out.println(byteArrayToHexString(arr));
             }
             break;
             case "test": {
@@ -78,6 +78,19 @@ public class Main {
             default:
             throw new RuntimeException("unsupported operation");
         }
+    }
+
+    public static byte[][] formatHashPieces(byte[] hashes, Integer size){
+        assert hashes != null;
+        assert size != null;
+        assert size > 0;
+
+        var resp = new byte[hashes.length % size == 0 ? hashes.length / size : (hashes.length / size) + 1][size];
+        for(int i = 0; i < hashes.length; i++){
+            resp[i / size][i % size] = hashes[i];
+        }
+
+        return resp;
     }
 
     public static String byteArrayToHexString(byte[] b) {
