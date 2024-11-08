@@ -1,5 +1,3 @@
-import java.io.ByteArrayOutputStream;
-import java.io.ObjectOutputStream;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.security.MessageDigest;
@@ -11,7 +9,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
-import java.util.LinkedHashSet;
 
 import com.google.gson.Gson;
 
@@ -26,7 +23,6 @@ public class Main {
                 String bencodedValue = args[1];
                 var index = new Main().new Reference<Integer>(0);
                 System.out.println(gson.toJson(formatToString(decodeMessage(bencodedValue.getBytes(), index))));
-                System.out.println(new String(encodeMessage(decodeMessage(bencodedValue.getBytes(), new Main().new Reference<Integer>(0)))));
             }
             break;
             case "info":{
@@ -40,15 +36,15 @@ public class Main {
                 Object formattedFileContent = formatToString(decodedMessage, Set.of("announce", "info", "length"));
                 // I am ok with this crashing if the expectations are not met;
                 assert formattedFileContent instanceof Map;
-                String url = (String)((Map<Object, Object>)formattedFileContent).get("announce");
-                Object info = ((Map<String, Object>)formattedFileContent).get("info");
-                Long length = ((Map<String, Long>)info).get("length");
+                String url = extractElement(formattedFileContent, "announce");
+                Object info = extractElement(formattedFileContent, "info");
+                Long length = extractElement(info, "length");
                 var md = MessageDigest.getInstance("SHA-1");
                 md.update(encodeMessage(info));
                 System.out.println("Info content hash: " + byteArrayToHexString(md.digest()));
 
-                Long pieceLength = ((Map<String, Long>)info).get("piece length");
-                byte[][] pieceHashesFormatted = formatHashPieces(((Map<String, byte[]>)info).get("pieces"), 20);
+                Long pieceLength = extractElement(info, "piece length");
+                byte[][] pieceHashesFormatted = formatHashPieces((byte[])extractElement(info, "pieces"), 20);
                 System.out.println("Tracker URL: "+ url);
                 System.out.println("Length: "+ length);
                 System.out.println("Piece Length: "+ pieceLength);
@@ -56,6 +52,8 @@ public class Main {
                 for(byte[] arr : pieceHashesFormatted) System.out.println(byteArrayToHexString(arr));
             }
             break;
+            case "peers": {
+            }
             case "test": {
                 // JUST FOR TESTING
                 String fileName = args[1];
@@ -78,6 +76,10 @@ public class Main {
             default:
             throw new RuntimeException("unsupported operation");
         }
+    }
+
+    public static <T> T extractElement(Object map, String name){
+        return ((Map<String, T>)map).get(name);
     }
 
     public static byte[][] formatHashPieces(byte[] hashes, Integer size){
