@@ -1,3 +1,8 @@
+import java.net.URI;
+import java.net.URL;
+import java.net.URLEncoder;
+import java.net.http.HttpRequest;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.security.MessageDigest;
@@ -53,7 +58,65 @@ public class Main {
             }
             break;
             case "peers": {
+                assert args.length > 1 && args[1] != null && !args[1].isEmpty();
+
+                var decodedMessage = decodeMessage(
+                    Files.readAllBytes(Paths.get(args[1])),
+                    new Main().new Reference<Integer>(0)
+                );
+
+                Object formattedFileContent = formatToString(decodedMessage, Set.of("announce", "info", "length"));
+                // I am ok with this crashing if the expectations are not met;
+                assert formattedFileContent instanceof Map;
+                Object info = extractElement(formattedFileContent, "info");
+
+                // TODO: all this gathering of the informations should abviously be done with an object
+                // but this is my project and I do what I whant. Jokes aside, it is definitely something
+                // to refactor but first I want to move on with the general functioning of the tool
+
+                String url = extractElement(formattedFileContent, "announce");
+
+                // gathering info hash
+                var md = MessageDigest.getInstance("SHA-1");
+                md.update(encodeMessage(info));
+                var infoHash = md.digest();
+
+                // left, as in bytes left to download
+                Long length = extractElement(info, "length");
+
+                // others
+                var peerId = "this is skill issue!";
+                var port = 6881;
+                var uploaded = 0;
+                var downloaded = 0;
+                var compact = 1;
+
+                var query = String.join(
+                    "&",
+                    List.of(
+                        "info_hash" + "=" + new String(infoHash),
+                        "peer_id" + "=" + peerId,
+                        "port" + "=" + port,
+                        "uploaded" + "=" + uploaded,
+                        "downloaded" + "=" + downloaded,
+                        "compact" + "=" + compact
+                    )
+                );
+
+                System.out.println(HttpRequest.newBuilder()
+                    .uri(new URI(
+                        null,
+                        null,
+                        url,
+                        query,
+                        null
+                    ))
+                    .GET()
+                    .build()
+                    .toString());
+
             }
+            break;
             case "test": {
                 // JUST FOR TESTING
                 String fileName = args[1];
