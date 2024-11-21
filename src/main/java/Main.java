@@ -71,7 +71,7 @@ public class Main {
                 Object info = extractElement(formattedFileContent, "info");
 
                 // TODO: all this gathering of the informations should abviously be done with an object
-                // but this is my project and I do what I whant. Jokes aside, it is definitely something
+                // but this is my project and I do what I want. Jokes aside, it is definitely something
                 // to refactor but first I want to move on with the general functioning of the tool
 
                 String url = extractElement(formattedFileContent, "announce");
@@ -81,8 +81,7 @@ public class Main {
                 md.update(encodeMessage(info));
                 var infoHash = md.digest();
 
-                // left, as in bytes left to download
-                Long length = extractElement(info, "length");
+                Long bytesLeft = extractElement(info, "length");
 
                 // others
                 var peerId = "this is skill issue!";
@@ -94,14 +93,17 @@ public class Main {
                 var query = String.join(
                     "&",
                     List.of(
-                        "info_hash" + "=" + new String(infoHash),
+                        "info_hash" + "=" + byteArrayToPercEncodedHexString(infoHash),
                         "peer_id" + "=" + peerId,
                         "port" + "=" + port,
                         "uploaded" + "=" + uploaded,
                         "downloaded" + "=" + downloaded,
+                        "left" + "=" + bytesLeft,
                         "compact" + "=" + compact
                     )
                 );
+
+                // TODO: The preparing of the request should be ok, now there is to actually test the request and parse the response
 
                 System.out.println(HttpRequest.newBuilder()
                     .uri(new URI(
@@ -162,6 +164,14 @@ public class Main {
         String result = "";
         for (int i=0; i < b.length; i++) {
             result += Integer.toString( ( b[i] & 0xff ) + 0x100, 16).substring( 1 );
+        }
+        return result;
+    }
+
+    public static String byteArrayToPercEncodedHexString(byte[] b) {
+        String result = "";
+        for (int i=0; i < b.length; i++) {
+            result += "%" + Integer.toString( ( b[i] & 0xff ) + 0x100, 16).substring( 1 );
         }
         return result;
     }
