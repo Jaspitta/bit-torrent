@@ -2,6 +2,9 @@ import java.net.URI;
 import java.net.URL;
 import java.net.URLEncoder;
 import java.net.http.HttpRequest;
+import java.net.http.HttpClient;
+import java.net.http.HttpResponse;
+import java.net.http.HttpResponse.BodyHandlers;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -103,19 +106,23 @@ public class Main {
                     )
                 );
 
-                // TODO: The preparing of the request should be ok, now there is to actually test the request and parse the response
 
-                System.out.println(HttpRequest.newBuilder()
-                    .uri(new URI(
-                        null,
-                        null,
-                        url,
-                        query,
-                        null
-                    ))
-                    .GET()
-                    .build()
-                    .toString());
+                // TODO: looks like request is going but I am realising only now that the info hash is not correct
+                // The pieces hashes are thoug
+                var resp = HttpClient.newBuilder().build().send(
+                    HttpRequest.newBuilder()
+                        .uri(new URI(
+                            null,
+                            null,
+                            url,
+                            query,
+                            null
+                        ))
+                        .GET()
+                        .build(),
+                    BodyHandlers.ofString()
+                );
+                System.out.println(resp.body().toString());
 
             }
             break;

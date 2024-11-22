@@ -5,5 +5,5 @@ mvn clean package
 # 	java -ea -jar ./target/java_bittorrent.jar "decode" "$input"
 # done
 #
-# java -ea -jar ./target/java_bittorrent.jar "info" "sample.torrent"
+java -ea -jar ./target/java_bittorrent.jar "info" "sample.torrent"
 java -ea -jar ./target/java_bittorrent.jar "peers" "sample.torrent"
