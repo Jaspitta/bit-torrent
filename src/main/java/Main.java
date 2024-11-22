@@ -107,8 +107,7 @@ public class Main {
                 );
 
 
-                // TODO: looks like request is going but I am realising only now that the info hash is not correct
-                // The pieces hashes are thoug
+                // TODO: Still says hash is invalid, I suspect it has to do with url encoding
                 var resp = HttpClient.newBuilder().build().send(
                     HttpRequest.newBuilder()
                         .uri(new URI(
@@ -136,12 +135,10 @@ public class Main {
 
                 var index = new Main().new Reference<Integer>(0);
                 md = MessageDigest.getInstance("SHA-1");
-                md.update("d3:foo5:grape5:helloi52ee".getBytes());
-                System.out.println("hash from string is: " + byteArrayToHexString(md.digest()));
 
-                var encodedMessage = encodeMessage(decodeMessage(fileAsByteArr, index));
+                var encodedMessage = formatToString(decodeMessage(fileAsByteArr, index), Set.of("announce", "info"));
                 md = MessageDigest.getInstance("SHA-1");
-                md.update(encodedMessage);
+                md.update(encodeMessage(extractElement(encodedMessage, "info")));
                 System.out.println("hash from decoded/encoded message: " + byteArrayToHexString(md.digest()));
             }
             break;
@@ -203,7 +200,7 @@ public class Main {
             }
             case Map m -> {
                 assert m != null;
-                var map = new HashMap<Object, Object>();
+                var map = new LinkedHashMap<Object, Object>();
                 m.forEach( (k, v) -> {
                     var formattedKey = formatToString(k);
                     var formattedValue = keys == null || keys.isEmpty() || keys.contains(formattedKey) || keys.contains(".") ? formatToString(v, keys) : v;
@@ -357,11 +354,11 @@ public class Main {
         return resp;
     }
 
-    public static Map<byte[], Object> decodeBencodeDictionary(byte[] bencodedString, Reference<Integer> index) {
+    public static LinkedHashMap<byte[], Object> decodeBencodeDictionary(byte[] bencodedString, Reference<Integer> index) {
         assert index.getValue() < bencodedString.length - 1;
 
         if(bencodedString == null) return null;
-        if(bencodedString.length == 0) return new HashMap<byte[], Object>();
+        if(bencodedString.length == 0) return new LinkedHashMap<byte[], Object>();
 
         var decodedDic = new LinkedHashMap<byte[], Object>();
         while(index.getValue() + 2 < bencodedString.length && bencodedString[index.getValue() + 1] != 'e'){
