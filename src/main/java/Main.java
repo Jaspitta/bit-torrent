@@ -1,5 +1,6 @@
 import java.net.URI;
 import java.net.URL;
+import java.net.*;
 import java.net.URLEncoder;
 import java.net.http.HttpRequest;
 import java.net.http.HttpClient;
@@ -106,19 +107,19 @@ public class Main {
                     )
                 );
 
+                var req =
+                    HttpRequest.newBuilder()
+                        .uri(URI.create(
+                            url + "?" + URLEncoder.encode(query, StandardCharsets.UTF_8) + "&" + "info_hash" + "=" + byteArrayToPercEncodedHexString(infoHash)
+                        )
+                    )
+                        .GET()
+                        .build();
 
+                System.out.println(req);
                 // TODO: Still says hash is invalid, I suspect it has to do with url encoding
                 var resp = HttpClient.newBuilder().build().send(
-                    HttpRequest.newBuilder()
-                        .uri(new URI(
-                            null,
-                            null,
-                            url,
-                            query,
-                            null
-                        ))
-                        .GET()
-                        .build(),
+                        req,
                     BodyHandlers.ofString()
                 );
                 System.out.println(resp.body().toString());
