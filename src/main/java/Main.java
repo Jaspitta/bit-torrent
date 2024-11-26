@@ -88,7 +88,7 @@ public class Main {
                 Long bytesLeft = extractElement(info, "length");
 
                 // others
-                var peerId = "this is skill issue!";
+                var peerId = "01919491796102618370";
                 var port = 6881;
                 var uploaded = 0;
                 var downloaded = 0;
@@ -97,7 +97,6 @@ public class Main {
                 var query = String.join(
                     "&",
                     List.of(
-                        "info_hash" + "=" + byteArrayToPercEncodedHexString(infoHash),
                         "peer_id" + "=" + peerId,
                         "port" + "=" + port,
                         "uploaded" + "=" + uploaded,
@@ -110,7 +109,14 @@ public class Main {
                 var req =
                     HttpRequest.newBuilder()
                         .uri(URI.create(
-                            url + "?" + URLEncoder.encode(query, StandardCharsets.UTF_8) + "&" + "info_hash" + "=" + byteArrayToPercEncodedHexString(infoHash)
+                            url + "?" +
+                            "peer_id" + "=" + URLEncoder.encode(peerId, StandardCharsets.UTF_8) + "&" +
+                            "port" + "=" + URLEncoder.encode(String.valueOf(port), StandardCharsets.UTF_8) + "&" +
+                            "uploaded" + "=" + URLEncoder.encode(String.valueOf(uploaded), StandardCharsets.UTF_8) + "&" +
+                            "downloaded" + "=" + URLEncoder.encode(String.valueOf(downloaded), StandardCharsets.UTF_8) + "&" +
+                            "left" + "=" + URLEncoder.encode(String.valueOf(bytesLeft), StandardCharsets.UTF_8) + "&" +
+                            "compact" + "=" + URLEncoder.encode(String.valueOf(compact), StandardCharsets.UTF_8) + "&" +
+                            "info_hash" + "=" + byteArrayToPercEncodedHexString(infoHash)
                         )
                     )
                         .GET()
