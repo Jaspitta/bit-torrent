@@ -94,18 +94,6 @@ public class Main {
                 var downloaded = 0;
                 var compact = 1;
 
-                var query = String.join(
-                    "&",
-                    List.of(
-                        "peer_id" + "=" + peerId,
-                        "port" + "=" + port,
-                        "uploaded" + "=" + uploaded,
-                        "downloaded" + "=" + downloaded,
-                        "left" + "=" + bytesLeft,
-                        "compact" + "=" + compact
-                    )
-                );
-
                 var req =
                     HttpRequest.newBuilder()
                         .uri(URI.create(
@@ -122,13 +110,12 @@ public class Main {
                         .GET()
                         .build();
 
-                System.out.println(req);
-                // TODO: Still says hash is invalid, I suspect it has to do with url encoding
                 var resp = HttpClient.newBuilder().build().send(
-                        req,
-                    BodyHandlers.ofString()
+                    req,
+                    BodyHandlers.ofByteArray()
                 );
-                System.out.println(resp.body().toString());
+                var formattedResp = formatToString(decodeMessage(resp.body(), new Main().new Reference<Integer>(0)), Set.of("peers"));
+                System.out.println(formattedResp);
 
             }
             break;
