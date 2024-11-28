@@ -6,6 +6,7 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpClient;
 import java.net.http.HttpResponse;
 import java.net.http.HttpResponse.BodyHandlers;
+import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -22,6 +23,9 @@ import java.util.Set;
 import com.google.gson.Gson;
 
 public class Main {
+    // TODO: decide on the aproach we want to take, should I mutate incoming objects in my functions
+    // or creating a new one
+    //
     // TODO: refactor some array conversion of byte[] to Byte[] and viceversia in utils methods
     private static final Gson gson = new Gson();
 
@@ -53,7 +57,7 @@ public class Main {
                 System.out.println("Info content hash: " + byteArrayToHexString(md.digest()));
 
                 Long pieceLength = extractElement(info, "piece length");
-                byte[][] pieceHashesFormatted = formatHashPieces((byte[])extractElement(info, "pieces"), 20);
+                byte[][] pieceHashesFormatted = arrToMatrix((byte[])extractElement(info, "pieces"), 20);
                 System.out.println("Tracker URL: "+ url);
                 System.out.println("Length: "+ length);
                 System.out.println("Piece Length: "+ pieceLength);
@@ -107,16 +111,26 @@ public class Main {
                             "info_hash" + "=" + byteArrayToPercEncodedHexString(infoHash)
                         )
                     )
-                        .GET()
-                        .build();
+                    .GET()
+                    .build();
 
                 var resp = HttpClient.newBuilder().build().send(
                     req,
                     BodyHandlers.ofByteArray()
                 );
-                var formattedResp = formatToString(decodeMessage(resp.body(), new Main().new Reference<Integer>(0)), Set.of("peers"));
-                System.out.println(formattedResp);
+                var formattedResp = stringifyKeys(decodeMessage(resp.body(), new Main().new Reference<Integer>(0)));
+                byte[][] peers = arrToMatrix(extractElement(formattedResp, "peers"), 6);
+                for(byte[] peer : peers){
+                    var sb = new StringBuilder();
+                    for(int i = 0; i < 4; i++){
+                        sb.append(Integer.valueOf(peer[i] & 0));
+                        if(i != 3) sb.append(".");
+                    }
+                    sb.append(":");
+                    sb.append(ByteBuffer.wrap(Arrays.copyOfRange(peer, 4, 5)).getInt());
+                    System.out.println(sb.toString());
 
+                }
             }
             break;
             case "test": {
@@ -145,7 +159,7 @@ public class Main {
         return ((Map<String, T>)map).get(name);
     }
 
-    public static byte[][] formatHashPieces(byte[] hashes, Integer size){
+    public static byte[][] arrToMatrix(byte[] hashes, Integer size){
         assert hashes != null;
         assert size != null;
         assert size > 0;
@@ -176,6 +190,22 @@ public class Main {
 
     public static Object formatToString(Object message){
         return formatToString(message, null);
+    }
+
+    public static Object stringifyKeys(Object object){
+        assert object != null;
+        assert object instanceof Map;
+
+        var res = new LinkedHashMap<String, Object>();
+        for(Map.Entry entry : ((Map<Object, Object>)object).entrySet()){
+            if(entry == null || entry.getKey() == null) continue;
+            Object formattedVal = entry.getValue();
+            String formattedKey = new String(decodeBencodeString((byte[])entry.getKey(), new Main().new Reference<Integer>(0)));
+            if(formattedVal instanceof Map) formattedVal = stringifyKeys((Map)formattedVal);
+            res.put(formattedKey, formattedVal);
+        }
+
+        return res;
     }
 
     public static Object formatToString(Object message, final Set<String> keys){
