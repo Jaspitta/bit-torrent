@@ -123,13 +123,13 @@ public class Main {
                 for(byte[] peer : peers){
                     var sb = new StringBuilder();
                     for(int i = 0; i < 4; i++){
-                        sb.append(Integer.valueOf(peer[i] & 0));
+                        sb.append(Integer.valueOf(peer[i]));
                         if(i != 3) sb.append(".");
                     }
                     sb.append(":");
-                    sb.append(ByteBuffer.wrap(Arrays.copyOfRange(peer, 4, 5)).getInt());
                     System.out.println(sb.toString());
-
+                    sb.append(ByteBuffer.wrap(peer, 4, 2).getInt());
+                    System.out.println(sb.toString());
                 }
             }
             break;
@@ -192,6 +192,11 @@ public class Main {
         return formatToString(message, null);
     }
 
+    /*
+     This method is meant to be called on an already decoded map
+     keep in mind, after decoding the keys are already in their decoded format
+     even though they are stored as byte array
+    */
     public static Object stringifyKeys(Object object){
         assert object != null;
         assert object instanceof Map;
@@ -200,9 +205,8 @@ public class Main {
         for(Map.Entry entry : ((Map<Object, Object>)object).entrySet()){
             if(entry == null || entry.getKey() == null) continue;
             Object formattedVal = entry.getValue();
-            String formattedKey = new String(decodeBencodeString((byte[])entry.getKey(), new Main().new Reference<Integer>(0)));
-            if(formattedVal instanceof Map) formattedVal = stringifyKeys((Map)formattedVal);
-            res.put(formattedKey, formattedVal);
+            if(formattedVal instanceof Map) formattedVal = stringifyKeys((Map)entry.getValue());
+            res.put(new String((byte[])entry.getKey()), formattedVal);
         }
 
         return res;
@@ -310,6 +314,7 @@ public class Main {
         assert index.getValue() < bencodedString.length - 1;
 
         int firstColonIndex = indexOfInByteArr(bencodedString, ':', index.getValue());
+        assert firstColonIndex >= 0;
         int end = firstColonIndex + Integer.parseInt(new String(Arrays.copyOfRange(bencodedString, index.getValue(), firstColonIndex)));
         index.setValue(end);
         return Arrays.copyOfRange(
@@ -422,7 +427,7 @@ public class Main {
 
     public static int indexOfInByteArr(byte[] message, Character element, int from){
         assert message != null && message.length != 0;
-        assert from > 0 && from < message.length;
+        assert from >= 0 && from < message.length;
         for(int i = from; i < message.length ;i++){
             if(message[i] == element) return i;
         }
