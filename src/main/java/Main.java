@@ -120,15 +120,14 @@ public class Main {
                 );
                 var formattedResp = stringifyKeys(decodeMessage(resp.body(), new Main().new Reference<Integer>(0)));
                 byte[][] peers = arrToMatrix(extractElement(formattedResp, "peers"), 6);
+
                 for(byte[] peer : peers){
                     var sb = new StringBuilder();
                     for(int i = 0; i < 4; i++){
-                        sb.append(Integer.valueOf(peer[i]));
+                        sb.append(Integer.toUnsignedLong(peer[i] & 0xFF));
                         if(i != 3) sb.append(".");
                     }
-                    sb.append(":");
-                    System.out.println(sb.toString());
-                    sb.append(ByteBuffer.wrap(peer, 4, 2).getInt());
+                    sb.append(":").append(((peer[4] & 0xff) << 8) | (peer[5] & 0xff));
                     System.out.println(sb.toString());
                 }
             }
