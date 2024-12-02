@@ -124,7 +124,7 @@ public class Main {
                 for(byte[] peer : peers){
                     var sb = new StringBuilder();
                     for(int i = 0; i < 4; i++){
-                        sb.append(Integer.toUnsignedLong(peer[i] & 0xFF));
+                        sb.append(Integer.toUnsignedLong(peer[i] & 0xff));
                         if(i != 3) sb.append(".");
                     }
                     sb.append(":").append(((peer[4] & 0xff) << 8) | (peer[5] & 0xff));
