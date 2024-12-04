@@ -132,6 +132,24 @@ public class Main {
                 }
             }
             break;
+            case "handshake": {
+                assert args.length > 1 && args[1] != null && !args[1].isEmpty();
+
+                var decodedMessage = decodeMessage(
+                    Files.readAllBytes(Paths.get(args[1])),
+                    new Main().new Reference<Integer>(0)
+                );
+
+                Object formattedFileContent = formatToString(decodedMessage, Set.of("info"));
+                assert formattedFileContent instanceof Map;
+                Object info = extractElement(formattedFileContent, "info");
+                var md = MessageDigest.getInstance("SHA-1");
+                md.update(encodeMessage(info));
+                var hashAsBytes = md.digest();
+
+
+            }
+            break;
             case "test": {
                 // JUST FOR TESTING
                 String fileName = args[1];
