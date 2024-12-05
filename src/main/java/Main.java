@@ -28,50 +28,62 @@ public class Main {
     //
     // TODO: refactor some array conversion of byte[] to Byte[] and viceversia in utils methods
     private static final Gson gson = new Gson();
+    private static final Main main = new Main();
+    private static final String HASH_TYPE = "SHA-1";
 
     public static void main(String[] args) throws Exception {
-        String command = args[0];
-        switch(command){
+        switch(args[0]){
             case "decode":{
-                String bencodedValue = args[1];
-                var index = new Main().new Reference<Integer>(0);
-                System.out.println(gson.toJson(formatToString(decodeMessage(bencodedValue.getBytes(), index))));
+                assert args.length > 1 && args[1] != null && !args[1].isEmpty();
+
+                System.out.println(
+                    gson.toJson(
+                        formatToString(
+                            decodeMessage(
+                                args[1].getBytes(),
+                                main.getNewReference(0)
+                            )
+                        )
+                    )
+                );
+
             }
             break;
             case "info":{
                 assert args.length > 1 && args[1] != null && !args[1].isEmpty();
 
-                var decodedMessage = decodeMessage(
-                    Files.readAllBytes(Paths.get(args[1])),
-                    new Main().new Reference<Integer>(0)
-                );
+                var decodedMessage = getDecodedMessageFromFile(args[1]);
 
                 Object formattedFileContent = formatToString(decodedMessage, Set.of("announce", "info", "length"));
-                // I am ok with this crashing if the expectations are not met;
+
                 assert formattedFileContent instanceof Map;
                 String url = extractElement(formattedFileContent, "announce");
                 Object info = extractElement(formattedFileContent, "info");
                 Long length = extractElement(info, "length");
-                var md = MessageDigest.getInstance("SHA-1");
-                md.update(encodeMessage(info));
-                System.out.println("Info content hash: " + byteArrayToHexString(md.digest()));
+
+                System.out.println("Info content hash: " +
+                    byteArrayToHexString(
+                        calculateHash(
+                            encodeMessage(info)
+                        )
+                    )
+                );
 
                 Long pieceLength = extractElement(info, "piece length");
                 byte[][] pieceHashesFormatted = arrToMatrix((byte[])extractElement(info, "pieces"), 20);
+
                 System.out.println("Tracker URL: "+ url);
                 System.out.println("Length: "+ length);
                 System.out.println("Piece Length: "+ pieceLength);
                 System.out.println("Piece Hashes: ");
+
                 for(byte[] arr : pieceHashesFormatted) System.out.println(byteArrayToHexString(arr));
             }
             break;
             case "peers": {
                 assert args.length > 1 && args[1] != null && !args[1].isEmpty();
 
-                var decodedMessage = decodeMessage(
-                    Files.readAllBytes(Paths.get(args[1])),
-                    new Main().new Reference<Integer>(0)
-                );
+                var decodedMessage = getDecodedMessageFromFile(args[1]);
 
                 Object formattedFileContent = formatToString(decodedMessage, Set.of("announce", "info", "length"));
                 // I am ok with this crashing if the expectations are not met;
@@ -85,9 +97,8 @@ public class Main {
                 String url = extractElement(formattedFileContent, "announce");
 
                 // gathering info hash
-                var md = MessageDigest.getInstance("SHA-1");
-                md.update(encodeMessage(info));
-                var infoHash = md.digest();
+
+                var infoHash = calculateHash(encodeMessage(info));
 
                 Long bytesLeft = extractElement(info, "length");
 
@@ -118,7 +129,7 @@ public class Main {
                     req,
                     BodyHandlers.ofByteArray()
                 );
-                var formattedResp = stringifyKeys(decodeMessage(resp.body(), new Main().new Reference<Integer>(0)));
+                var formattedResp = stringifyKeys(decodeMessage(resp.body(), main.getNewReference(0)));
                 byte[][] peers = arrToMatrix(extractElement(formattedResp, "peers"), 6);
 
                 for(byte[] peer : peers){
@@ -137,7 +148,7 @@ public class Main {
 
                 var decodedMessage = decodeMessage(
                     Files.readAllBytes(Paths.get(args[1])),
-                    new Main().new Reference<Integer>(0)
+                    main.getNewReference(0)
                 );
 
                 Object formattedFileContent = formatToString(decodedMessage, Set.of("info"));
@@ -170,6 +181,26 @@ public class Main {
             default:
             throw new RuntimeException("unsupported operation");
         }
+    }
+
+
+    public static byte[] calculateHash(byte[] content) throws Exception {
+        assert content != null;
+        assert content.length > 0;
+
+        var md = MessageDigest.getInstance(HASH_TYPE);
+        md.update(content);
+        return md.digest();
+    }
+
+    public static Object getDecodedMessageFromFile(String path) throws Exception {
+        assert path != null;
+        assert !path.isEmpty();
+
+        return decodeMessage(
+            Files.readAllBytes(Paths.get(path)), // TODO: potentially could be improved by reading only the bytes needed every time
+            main.getNewReference(0)
+        );
     }
 
     public static <T> T extractElement(Object map, String name){
@@ -474,5 +505,9 @@ public class Main {
         public T getValue(){
             return this.value;
         }
+    }
+
+    <T> Reference<T> getNewReference(T v){
+        return main.new Reference<T>(v);
     }
 }
