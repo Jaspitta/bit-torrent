@@ -57,9 +57,9 @@ public class Main {
                 Object formattedFileContent = formatToString(decodedMessage, Set.of("announce", "info", "length"));
 
                 assert formattedFileContent instanceof Map;
-                String url = extractElement(formattedFileContent, "announce");
-                Object info = extractElement(formattedFileContent, "info");
-                Long length = extractElement(info, "length");
+                String url = extractElement((Map<String, String>)formattedFileContent, "announce");
+                Object info = extractElement((Map<String, String>)formattedFileContent, "info");
+                Long length = extractElement((Map<String, Long>)info, "length");
 
                 System.out.println("Info content hash: " +
                     byteArrayToHexString(
@@ -69,8 +69,8 @@ public class Main {
                     )
                 );
 
-                Long pieceLength = extractElement(info, "piece length");
-                byte[][] pieceHashesFormatted = arrToMatrix((byte[])extractElement(info, "pieces"), 20);
+                Long pieceLength = extractElement((Map<String, Long>)info, "piece length");
+                byte[][] pieceHashesFormatted = arrToMatrix(extractElement((Map<String, byte[]>)info, "pieces"), 20);
 
                 System.out.println("Tracker URL: "+ url);
                 System.out.println("Length: "+ length);
@@ -88,49 +88,28 @@ public class Main {
                 Object formattedFileContent = formatToString(decodedMessage, Set.of("announce", "info", "length"));
                 // I am ok with this crashing if the expectations are not met;
                 assert formattedFileContent instanceof Map;
-                Object info = extractElement(formattedFileContent, "info");
+                Object info = extractElement((Map<String, Object>)formattedFileContent, "info");
 
                 // TODO: all this gathering of the informations should abviously be done with an object
                 // but this is my project and I do what I want. Jokes aside, it is definitely something
                 // to refactor but first I want to move on with the general functioning of the tool
 
-                String url = extractElement(formattedFileContent, "announce");
-
-                // gathering info hash
-
-                var infoHash = calculateHash(encodeMessage(info));
-
-                Long bytesLeft = extractElement(info, "length");
-
-                // others
-                var peerId = "01919491796102618370";
-                var port = 6881;
-                var uploaded = 0;
-                var downloaded = 0;
-                var compact = 1;
-
-                var req =
-                    HttpRequest.newBuilder()
-                        .uri(URI.create(
-                            url + "?" +
-                            "peer_id" + "=" + URLEncoder.encode(peerId, StandardCharsets.UTF_8) + "&" +
-                            "port" + "=" + URLEncoder.encode(String.valueOf(port), StandardCharsets.UTF_8) + "&" +
-                            "uploaded" + "=" + URLEncoder.encode(String.valueOf(uploaded), StandardCharsets.UTF_8) + "&" +
-                            "downloaded" + "=" + URLEncoder.encode(String.valueOf(downloaded), StandardCharsets.UTF_8) + "&" +
-                            "left" + "=" + URLEncoder.encode(String.valueOf(bytesLeft), StandardCharsets.UTF_8) + "&" +
-                            "compact" + "=" + URLEncoder.encode(String.valueOf(compact), StandardCharsets.UTF_8) + "&" +
-                            "info_hash" + "=" + byteArrayToPercEncodedHexString(infoHash)
-                        )
-                    )
-                    .GET()
-                    .build();
+                var peerReq = createPeerRequest(
+                    extractElement((Map<String, String>)formattedFileContent, "announce"),
+                    null,
+                    6881,
+                    0,
+                    0,
+                    extractElement((Map<String, Long>)info, "length"),
+                    calculateHash(encodeMessage(info))
+                );
 
                 var resp = HttpClient.newBuilder().build().send(
-                    req,
+                    peerReq,
                     BodyHandlers.ofByteArray()
                 );
                 var formattedResp = stringifyKeys(decodeMessage(resp.body(), main.getNewReference(0)));
-                byte[][] peers = arrToMatrix(extractElement(formattedResp, "peers"), 6);
+                byte[][] peers = arrToMatrix(extractElement((Map<String, byte[]>)formattedResp, "peers"), 6);
 
                 for(byte[] peer : peers){
                     var sb = new StringBuilder();
@@ -153,7 +132,7 @@ public class Main {
 
                 Object formattedFileContent = formatToString(decodedMessage, Set.of("info"));
                 assert formattedFileContent instanceof Map;
-                Object info = extractElement(formattedFileContent, "info");
+                Object info = extractElement((Map<String, Object>)formattedFileContent, "info");
                 var md = MessageDigest.getInstance("SHA-1");
                 md.update(encodeMessage(info));
                 var hashAsBytes = md.digest();
@@ -174,7 +153,7 @@ public class Main {
 
                 var encodedMessage = formatToString(decodeMessage(fileAsByteArr, index), Set.of("announce", "info"));
                 md = MessageDigest.getInstance("SHA-1");
-                md.update(encodeMessage(extractElement(encodedMessage, "info")));
+                md.update(encodeMessage(extractElement((Map<String, Object>)encodedMessage, "info")));
                 System.out.println("hash from decoded/encoded message: " + byteArrayToHexString(md.digest()));
             }
             break;
@@ -183,6 +162,40 @@ public class Main {
         }
     }
 
+
+    public static HttpRequest createPeerRequest(
+        String url,
+        String peerId,
+        Integer port,
+        Integer uploaded,
+        Integer downloaded,
+        Long bytesLeft,
+        byte[] hash
+    ){
+        assert url != null;
+        peerId = peerId != null ? peerId : "01919491796102618370";
+        assert port != null || port >= 1024 || port <= 49151;
+        uploaded = uploaded != null ? uploaded : 0;
+        downloaded = downloaded != null ? downloaded : 0;
+        assert bytesLeft != null;
+        assert hash != null && hash.length > 0;
+
+        return
+            HttpRequest.newBuilder()
+                .uri(URI.create(
+                    url + "?" +
+                    "peer_id" + "=" + URLEncoder.encode(peerId, StandardCharsets.UTF_8) + "&" +
+                    "port" + "=" + URLEncoder.encode(String.valueOf(port), StandardCharsets.UTF_8) + "&" +
+                    "uploaded" + "=" + URLEncoder.encode(String.valueOf(uploaded), StandardCharsets.UTF_8) + "&" +
+                    "downloaded" + "=" + URLEncoder.encode(String.valueOf(downloaded), StandardCharsets.UTF_8) + "&" +
+                    "left" + "=" + URLEncoder.encode(String.valueOf(bytesLeft), StandardCharsets.UTF_8) + "&" +
+                    "compact" + "=" + URLEncoder.encode("1", StandardCharsets.UTF_8) + "&" +
+                    "info_hash" + "=" + byteArrayToPercEncodedHexString(hash)
+                )
+            )
+            .GET()
+            .build();
+    }
 
     public static byte[] calculateHash(byte[] content) throws Exception {
         assert content != null;
@@ -203,8 +216,8 @@ public class Main {
         );
     }
 
-    public static <T> T extractElement(Object map, String name){
-        return ((Map<String, T>)map).get(name);
+    public static <T> T extractElement(Map<String, T> map, String name){
+        return map.get(name);
     }
 
     public static byte[][] arrToMatrix(byte[] hashes, Integer size){
