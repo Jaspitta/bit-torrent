@@ -90,10 +90,6 @@ public class Main {
                 assert formattedFileContent instanceof Map;
                 Object info = extractElement((Map<String, Object>)formattedFileContent, "info");
 
-                // TODO: all this gathering of the informations should abviously be done with an object
-                // but this is my project and I do what I want. Jokes aside, it is definitely something
-                // to refactor but first I want to move on with the general functioning of the tool
-
                 var peerReq = createPeerRequest(
                     extractElement((Map<String, String>)formattedFileContent, "announce"),
                     null,
@@ -104,22 +100,17 @@ public class Main {
                     calculateHash(encodeMessage(info))
                 );
 
-                var resp = HttpClient.newBuilder().build().send(
-                    peerReq,
-                    BodyHandlers.ofByteArray()
+                var resp = formatPeersResp(
+                    HttpClient.newBuilder().build().send(
+                        peerReq,
+                        BodyHandlers.ofByteArray()
+                    )
                 );
-                var formattedResp = stringifyKeys(decodeMessage(resp.body(), main.getNewReference(0)));
-                byte[][] peers = arrToMatrix(extractElement((Map<String, byte[]>)formattedResp, "peers"), 6);
 
-                for(byte[] peer : peers){
-                    var sb = new StringBuilder();
-                    for(int i = 0; i < 4; i++){
-                        sb.append(Integer.toUnsignedLong(peer[i] & 0xff));
-                        if(i != 3) sb.append(".");
-                    }
-                    sb.append(":").append(((peer[4] & 0xff) << 8) | (peer[5] & 0xff));
-                    System.out.println(sb.toString());
+                for(String peer : resp){
+                    System.out.println(peer);
                 }
+
             }
             break;
             case "handshake": {
@@ -162,6 +153,28 @@ public class Main {
         }
     }
 
+    public static String[] formatPeersResp(HttpResponse<byte[]> resp){
+        assert resp != null;
+        assert resp.body() != null;
+
+        var formattedResp = stringifyKeys(decodeMessage(resp.body(), main.getNewReference(0)));
+        byte[][] peers = arrToMatrix(extractElement((Map<String, byte[]>)formattedResp, "peers"), 6);
+
+        var peersFormatted = new String[peers.length];
+
+        for(int i = 0; i < peers.length; i++){
+            var sb = new StringBuilder();
+            for(int j = 0; j < 4; j++){
+                sb.append(Integer.toUnsignedLong(peers[i][j] & 0xff));
+                if(j != 3) sb.append(".");
+            }
+            // big endian
+            sb.append(":").append(((peers[i][4] & 0xff) << 8) | (peers[i][5] & 0xff));
+            peersFormatted[i] = sb.toString();
+        }
+
+        return peersFormatted;
+    }
 
     public static HttpRequest createPeerRequest(
         String url,
@@ -254,7 +267,7 @@ public class Main {
     }
 
     /*
-     This method is meant to be called on an already decoded map
+     This method is meant to be called on an already decoded map,
      keep in mind, after decoding the keys are already in their decoded format
      even though they are stored as byte array
     */
@@ -495,6 +508,7 @@ public class Main {
 
         return -1;
     }
+
     /**
    * Used to keep track of the start/end index of the element we are decoding.
    * The goal is to move the index but never actually modify the original string.
@@ -502,7 +516,9 @@ public class Main {
    * At the end of the decoding method the value should be at the last index of the element we are decoding.
    *
    * In general:
-   *  this can also be used to pass a reference to anything when the pass by value policy of java is not what we need
+   *  this can also be used to pass a reference to anything when the pass by value policy of java is not what you need,
+   *  however, keep in mind the java way of doing it would be to encapsulate all the needed info in an object and reference
+   *  the field of the object
    */
     private class Reference<T>{
         private T value;
@@ -518,9 +534,10 @@ public class Main {
         public T getValue(){
             return this.value;
         }
+
     }
 
-    <T> Reference<T> getNewReference(T v){
+    public <T> Reference<T> getNewReference(T v){
         return main.new Reference<T>(v);
     }
 }
