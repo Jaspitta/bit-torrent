@@ -114,19 +114,22 @@ public class Main {
             }
             break;
             case "handshake": {
-                assert args.length > 1 && args[1] != null && !args[1].isEmpty();
+                assert args.length >= 3 && args[1] != null && !args[1].isEmpty() && args[2] != null && !args[2].isEmpty();
 
-                var decodedMessage = decodeMessage(
-                    Files.readAllBytes(Paths.get(args[1])),
-                    main.getNewReference(0)
-                );
+                var decodedMessage = getDecodedMessageFromFile(args[1]);
 
-                Object formattedFileContent = formatToString(decodedMessage, Set.of("info"));
+                Object formattedFileContent = formatToString(decodedMessage, Set.of("announce", "info", "length"));
+                // I am ok with this crashing if the expectations are not met;
                 assert formattedFileContent instanceof Map;
                 Object info = extractElement((Map<String, Object>)formattedFileContent, "info");
-                var md = MessageDigest.getInstance("SHA-1");
-                md.update(encodeMessage(info));
-                var hashAsBytes = md.digest();
+                var hash = calculateHash(encodeMessage(info));
+
+                // create socket connection
+                // create out and in streams
+                // prepare message
+                // send message in out
+                // read in
+                // format resp
 
 
             }
