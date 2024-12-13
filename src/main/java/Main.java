@@ -35,7 +35,6 @@ public class Main {
         switch(args[0]){
             case "decode":{
                 assert args.length > 1 && args[1] != null && !args[1].isEmpty();
-
                 System.out.println(
                     gson.toJson(
                         formatToString(
@@ -46,7 +45,6 @@ public class Main {
                         )
                     )
                 );
-
             }
             break;
             case "info":{
@@ -124,9 +122,47 @@ public class Main {
                 Object info = extractElement((Map<String, Object>)formattedFileContent, "info");
                 var hash = calculateHash(encodeMessage(info));
 
+                int ipPortSeparator = args[2].indexOf(':');
+
                 // create socket connection
+                // TODO: using passed values as inputs withouth sanythization is never a good idea for security reasons
+
+                try(var clientSocket = new Socket(args[2].substring(0, ipPortSeparator), Integer.valueOf(args[2].substring(ipPortSeparator+1)))){
+
                 // create out and in streams
+                    var inStream = clientSocket.getInputStream();
+                    var outStream = clientSocket.getOutputStream();
+
                 // prepare message
+                    // length of protocol: 19
+                    // BitTorrentProtocol
+                    // 8 bytes to 0
+                    // sha1 as bytes (20)
+                    // peerId (20 random bytes)
+                    var message = new byte[68];
+                    int i = 0;
+                    message[i] = 19;
+                    i++;
+                    for(char letter : "BitTorrent protocol".toCharArray()){
+                        message[i] = (byte)letter;
+                        i++;
+                    }
+                    while(i < 28){
+                        message[i] = 0;
+                        i++;
+                    }
+                    for(byte b : hash){
+                        message[i] = b;
+                        i++;
+                    }
+                    while(i < 68){
+                        message[i] = 5;
+                        i++;
+                    }
+                    System.out.println(i);
+                    System.out.println(new String(message));
+                }
+
                 // send message in out
                 // read in
                 // format resp
