@@ -1,4 +1,5 @@
 import java.io.BufferedReader;
+import java.io.ByteArrayOutputStream;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.*;
@@ -126,13 +127,10 @@ public class Main {
 
                 // create socket connection
                 // TODO: using passed values as inputs withouth sanythization is never a good idea for security reasons
-
-                System.out.println(args[2].substring(0, ipPortSeparator));
-                System.out.println(Integer.valueOf(args[2].substring(ipPortSeparator+1)));
                 try(var clientSocket = new Socket(args[2].substring(0, ipPortSeparator), Integer.valueOf(args[2].substring(ipPortSeparator+1)))){
 
                 // create out and in streams
-                    var outStream = new PrintWriter(clientSocket.getOutputStream(), true);
+                    var outStream = clientSocket.getOutputStream();
 
                 // prepare message
                     // length of protocol: 19
@@ -160,14 +158,10 @@ public class Main {
                         message[i] = b;
                         i++;
                     }
-                    System.out.println(i);
-                    System.out.println(message.length);
-                    for(byte b : message) System.out.println(Integer.valueOf(b));
-                    System.out.println(new String(message));
-
-                    outStream.println(message);
-                    var inStream = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
-                    System.out.println(inStream.readLine());
+                    outStream.write(message);
+                    var inStream = clientSocket.getInputStream();
+                    // looks like the answer is 74 bytes long
+                    System.out.println(new String(inStream.readNBytes(74)));
                 }
 
                 // send message in out
