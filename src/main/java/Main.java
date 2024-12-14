@@ -1,7 +1,7 @@
-import java.net.URI;
-import java.net.URL;
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.io.PrintWriter;
 import java.net.*;
-import java.net.URLEncoder;
 import java.net.http.HttpRequest;
 import java.net.http.HttpClient;
 import java.net.http.HttpResponse;
@@ -127,11 +127,12 @@ public class Main {
                 // create socket connection
                 // TODO: using passed values as inputs withouth sanythization is never a good idea for security reasons
 
+                System.out.println(args[2].substring(0, ipPortSeparator));
+                System.out.println(Integer.valueOf(args[2].substring(ipPortSeparator+1)));
                 try(var clientSocket = new Socket(args[2].substring(0, ipPortSeparator), Integer.valueOf(args[2].substring(ipPortSeparator+1)))){
 
                 // create out and in streams
-                    var inStream = clientSocket.getInputStream();
-                    var outStream = clientSocket.getOutputStream();
+                    var outStream = new PrintWriter(clientSocket.getOutputStream(), true);
 
                 // prepare message
                     // length of protocol: 19
@@ -143,8 +144,8 @@ public class Main {
                     int i = 0;
                     message[i] = 19;
                     i++;
-                    for(char letter : "BitTorrent protocol".toCharArray()){
-                        message[i] = (byte)letter;
+                    for(byte b : "BitTorrent protocol".getBytes()){
+                        message[i] = b;
                         i++;
                     }
                     while(i < 28){
@@ -155,12 +156,18 @@ public class Main {
                         message[i] = b;
                         i++;
                     }
-                    while(i < 68){
-                        message[i] = 5;
+                    for(byte b : "00112233445566778899".getBytes()){
+                        message[i] = b;
                         i++;
                     }
                     System.out.println(i);
+                    System.out.println(message.length);
+                    for(byte b : message) System.out.println(Integer.valueOf(b));
                     System.out.println(new String(message));
+
+                    outStream.println(message);
+                    var inStream = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
+                    System.out.println(inStream.readLine());
                 }
 
                 // send message in out
