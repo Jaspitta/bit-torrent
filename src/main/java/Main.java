@@ -161,7 +161,12 @@ public class Main {
                     outStream.write(message);
                     var inStream = clientSocket.getInputStream();
                     // looks like the answer is 74 bytes long
-                    System.out.println(new String(inStream.readNBytes(74)));
+                    System.out.println(
+                        "Peer ID: " +
+                        byteArrayToHexString(
+                            Arrays.copyOfRange(inStream.readNBytes(68), 48, 68)
+                        )
+                    );
                 }
 
                 // send message in out
