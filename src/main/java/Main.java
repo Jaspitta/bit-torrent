@@ -160,11 +160,17 @@ public class Main {
                     }
                     outStream.write(message);
                     var inStream = clientSocket.getInputStream();
-                    // looks like the answer is 74 bytes long
+
+                    // should I check the hash back is the same?
+                    var handShakeResp = inStream.readNBytes(68);
+
+                    for(int j = 0; j < hash.length; j ++)
+                        assert hash[j] == handShakeResp[j+28];
+
                     System.out.println(
                         "Peer ID: " +
                         byteArrayToHexString(
-                            Arrays.copyOfRange(inStream.readNBytes(68), 48, 68)
+                            Arrays.copyOfRange(handShakeResp, 48, 68)
                         )
                     );
                 }
