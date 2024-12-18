@@ -34,7 +34,7 @@ public class Main {
 
     public static void main(String[] args) throws Exception {
         switch(args[0]){
-            case "decode":{
+            case "decode": {
                 assert args.length > 1 && args[1] != null && !args[1].isEmpty();
                 System.out.println(
                     gson.toJson(
@@ -48,7 +48,7 @@ public class Main {
                 );
             }
             break;
-            case "info":{
+            case "info": {
                 assert args.length > 1 && args[1] != null && !args[1].isEmpty();
 
                 var decodedMessage = getDecodedMessageFromFile(args[1]);
@@ -118,21 +118,17 @@ public class Main {
                 var decodedMessage = getDecodedMessageFromFile(args[1]);
 
                 Object formattedFileContent = formatToString(decodedMessage, Set.of("announce", "info", "length"));
-                // I am ok with this crashing if the expectations are not met;
                 assert formattedFileContent instanceof Map;
                 Object info = extractElement((Map<String, Object>)formattedFileContent, "info");
                 var hash = calculateHash(encodeMessage(info));
 
                 int ipPortSeparator = args[2].indexOf(':');
 
-                // create socket connection
                 // TODO: using passed values as inputs withouth sanythization is never a good idea for security reasons
                 try(var clientSocket = new Socket(args[2].substring(0, ipPortSeparator), Integer.valueOf(args[2].substring(ipPortSeparator+1)))){
 
-                // create out and in streams
                     var outStream = clientSocket.getOutputStream();
 
-                // prepare message
                     // length of protocol: 19
                     // BitTorrentProtocol
                     // 8 bytes to 0
@@ -174,11 +170,51 @@ public class Main {
                         )
                     );
                 }
+            }
+            break;
+            case "download_piece": {
 
-                // send message in out
-                // read in
-                // format resp
+                // download_piece -o output_file torrent_file piece_index
 
+                // get tracker url
+                // get peers
+                // hadshake with one
+
+                // peer messages
+                    // length (4)
+                    // id (1)
+                    // payload (variable)
+
+
+                // wait for bitfield message
+                    // id = 5
+                    // payload = pieces available, ignore for now
+                // send interested message
+                    // id = 2
+                    // payload empty
+                // wait for unchoke
+                    // id = 1
+                    // payload empty
+                // request message -> can be parallel
+                    // id = 6
+                    // payload
+                        // index of the piece
+                        // begin byte (based on the block)
+                        // length of block
+                // wait piece message
+                    // id = 7
+                    // payload
+                        // index of piece
+                        // begin byte
+                        // block data
+
+                // file     -> piece        -> blocks
+                // length   -> piece lenght  -> 2^14 (last is piece length % 2^14)
+                // blocks can be requested in parallel
+
+
+                // combine blocks
+                // verify piece hash
 
             }
             break;
