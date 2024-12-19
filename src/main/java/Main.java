@@ -1,20 +1,16 @@
-import java.io.BufferedReader;
-import java.io.ByteArrayOutputStream;
-import java.io.InputStreamReader;
-import java.io.PrintWriter;
-import java.net.*;
-import java.net.http.HttpRequest;
+import java.net.Socket;
+import java.net.URI;
+import java.net.URLEncoder;
 import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.net.http.HttpResponse.BodyHandlers;
-import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.security.MessageDigest;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -31,6 +27,7 @@ public class Main {
     private static final Gson gson = new Gson();
     private static final Main main = new Main();
     private static final String HASH_TYPE = "SHA-1";
+    private static final int HANDSHAKE_SIZE = 68;
 
     public static void main(String[] args) throws Exception {
         switch(args[0]){
@@ -122,63 +119,75 @@ public class Main {
                 Object info = extractElement((Map<String, Object>)formattedFileContent, "info");
                 var hash = calculateHash(encodeMessage(info));
 
-                int ipPortSeparator = args[2].indexOf(':');
+                var ip = formatIp(args[2]);
 
-                // TODO: using passed values as inputs withouth sanythization is never a good idea for security reasons
-                try(var clientSocket = new Socket(args[2].substring(0, ipPortSeparator), Integer.valueOf(args[2].substring(ipPortSeparator+1)))){
+                try(var clientSocket = new Socket(ip.getKey(), ip.getValue())){
 
-                    var outStream = clientSocket.getOutputStream();
-
-                    // length of protocol: 19
-                    // BitTorrentProtocol
-                    // 8 bytes to 0
-                    // sha1 as bytes (20)
-                    // peerId (20 random bytes)
-                    var message = new byte[68];
-                    int i = 0;
-                    message[i] = 19;
-                    i++;
-                    for(byte b : "BitTorrent protocol".getBytes()){
-                        message[i] = b;
-                        i++;
-                    }
-                    while(i < 28){
-                        message[i] = 0;
-                        i++;
-                    }
-                    for(byte b : hash){
-                        message[i] = b;
-                        i++;
-                    }
-                    for(byte b : "00112233445566778899".getBytes()){
-                        message[i] = b;
-                        i++;
-                    }
-                    outStream.write(message);
-                    var inStream = clientSocket.getInputStream();
+                    clientSocket.getOutputStream().write(buildHandshakeMessage(hash));
 
                     // should I check the hash back is the same?
-                    var handShakeResp = inStream.readNBytes(68);
+                    var handShakeResp = clientSocket.getInputStream().readNBytes(HANDSHAKE_SIZE);
 
-                    for(int j = 0; j < hash.length; j ++)
-                        assert hash[j] == handShakeResp[j+28];
+                    for(int i = 0; i < hash.length; i ++)
+                        assert hash[i] == handShakeResp[i+28];
 
                     System.out.println(
                         "Peer ID: " +
                         byteArrayToHexString(
-                            Arrays.copyOfRange(handShakeResp, 48, 68)
+                            Arrays.copyOfRange(handShakeResp, 48, HANDSHAKE_SIZE)
                         )
                     );
                 }
             }
             break;
             case "download_piece": {
+                assert args != null;
+                assert args[1] == "-o";
+                assert args[2] != null && !"".equals(args[2]);
+                assert args[3] != null && !"".equals(args[3]);
+                assert args[3] != null && !"".equals(args[3]);
 
                 // download_piece -o output_file torrent_file piece_index
 
                 // get tracker url
+                var decodedMessage = getDecodedMessageFromFile(args[3]);
+
+                Object formattedFileContent = formatToString(decodedMessage, Set.of("announce", "info", "length"));
+
                 // get peers
+                Object info = extractElement((Map<String, Object>)formattedFileContent, "info");
+
+                var hash = calculateHash(encodeMessage(info));
+                var peerReq = createPeerRequest(
+                    extractElement((Map<String, String>)formattedFileContent, "announce"),
+                    null,
+                    6881,
+                    0,
+                    0,
+                    extractElement((Map<String, Long>)info, "length"),
+                    hash
+                );
+
+                // only need one peer for now
+                var peer = formatPeersResp(
+                    HttpClient.newBuilder().build().send(
+                        peerReq,
+                        BodyHandlers.ofByteArray()
+                    )
+                )[0];
+
                 // hadshake with one
+                var ip = formatIp(peer);
+                try(var clientSocket = new Socket(ip.getKey(), ip.getValue())){
+
+                    clientSocket.getOutputStream().write(buildHandshakeMessage(hash));
+
+                    var handshakeResp = clientSocket.getInputStream().readNBytes(HANDSHAKE_SIZE);
+
+                    for(int i = 0; i < hash.length; i ++)
+                        assert hash[i] == handshakeResp[i+28];
+                }
+
 
                 // peer messages
                     // length (4)
@@ -226,7 +235,7 @@ public class Main {
                 md.update(fileAsByteArr);
                 System.out.println("hash from file is: " + byteArrayToHexString(md.digest()));
 
-                var index = new Main().new Reference<Integer>(0);
+                var index = main.getNewReference(0);
                 md = MessageDigest.getInstance("SHA-1");
 
                 var encodedMessage = formatToString(decodeMessage(fileAsByteArr, index), Set.of("announce", "info"));
@@ -238,6 +247,49 @@ public class Main {
             default:
             throw new RuntimeException("unsupported operation");
         }
+    }
+
+
+
+    public static byte[] buildHandshakeMessage(byte[] hash){
+        assert hash != null && hash.length == 20;
+        //
+        // length of protocol: 19
+        // BitTorrentProtocol
+        // 8 bytes to 0
+        // sha1 as bytes (20)
+        // peerId (20 random bytes)
+        var message = new byte[68];
+        int i = 0;
+        message[i] = 19;
+        i++;
+        for(byte b : "BitTorrent protocol".getBytes()){
+            message[i] = b;
+            i++;
+        }
+        while(i < 28){
+            message[i] = 0;
+            i++;
+        }
+        for(byte b : hash){
+            message[i] = b;
+            i++;
+        }
+        for(byte b : "00112233445566778899".getBytes()){
+            message[i] = b;
+            i++;
+        }
+        return message;
+    }
+
+    public static Map.Entry<String, Integer> formatIp(String address){
+        assert address != null && !"".equals(address);
+
+        var separatorIndex = address.indexOf(':');
+        return Map.entry(
+            address.substring(0, separatorIndex),
+            Integer.valueOf(address.substring(separatorIndex-1, address.length()))
+        );
     }
 
     public static String[] formatPeersResp(HttpResponse<byte[]> resp){
@@ -626,5 +678,36 @@ public class Main {
 
     public <T> Reference<T> getNewReference(T v){
         return main.new Reference<T>(v);
+    }
+
+    // this is probably a good place for an abstract class
+    private final class PeerMessage {
+        final Integer length;
+        final byte id;
+        final Map payload;
+
+        PeerMessage(byte[] message){
+            assert message != null && message.length >= 5;
+
+            // 4 bytes as big endian
+            this.length = Integer.valueOf(
+                message[0] & 0xff << 24
+                |
+                message[1] & 0xff << 16
+                |
+                message[2] & 0xff << 8
+                |
+                message[3] & 0xff
+            );
+
+            id = message[4];
+            this.payload = buildPayload(Arrays.copyOfRange(message, 5, message.length), this.id);
+        }
+
+        private Map buildPayload(byte[] payload, final byte id){
+            return switch(id){
+                default -> null;
+            };
+        }
     }
 }
