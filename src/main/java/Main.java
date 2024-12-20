@@ -1,3 +1,5 @@
+import java.io.IOException;
+import java.io.InputStream;
 import java.net.Socket;
 import java.net.URI;
 import java.net.URLEncoder;
@@ -180,12 +182,29 @@ public class Main {
                 var ip = formatIp(peer);
                 try(var clientSocket = new Socket(ip.getKey(), ip.getValue())){
 
-                    clientSocket.getOutputStream().write(buildHandshakeMessage(hash));
+                    var outStream = clientSocket.getOutputStream();
+                    outStream.write(buildHandshakeMessage(hash));
 
-                    var handshakeResp = clientSocket.getInputStream().readNBytes(HANDSHAKE_SIZE);
+                    var inStream = clientSocket.getInputStream();
+                    var handshakeResp = inStream.readNBytes(HANDSHAKE_SIZE);
 
                     for(int i = 0; i < hash.length; i ++)
                         assert hash[i] == handshakeResp[i+28];
+
+                    var bitFieldMessage = readNextMessage(inStream);
+                    assert bitFieldMessage[4] == PeerMessageType.BITFIELD.id;
+
+                    outStream.write(buildInterestedMessage());
+                    var unchokeMessage = readNextMessage(inStream);
+                    assert unchokeMessage[4] == PeerMessageType.UNCHOKE.id;
+
+                    // length
+                    // 6
+                    // index -> from input
+                    // 0 -> increments of 2^14
+                    // length min between 2^14 and bytes left
+
+
                 }
 
 
@@ -249,6 +268,39 @@ public class Main {
         }
     }
 
+    public static byte[] buildInterestedMessage(){
+        return new byte[]{
+            0,0,0,5, // length
+            2 // id
+            // payload is empty
+        };
+    }
+
+    public static byte[] readNextMessage(InputStream inStream) throws IOException{
+        assert inStream != null;
+
+        var rawLength = inStream.readNBytes(4);
+        var length = extractLengthFromPeerMessage(rawLength);
+
+        var message = new byte[length + 4];
+        for(int i = 0; i < 4; i++) message[i] = rawLength[i];
+
+        var remainingMessage = inStream.readNBytes(length);
+
+        for(int i = 0; i < message.length; i++) message[i+4] = remainingMessage[i];
+
+        return message;
+    }
+
+    public static int extractLengthFromPeerMessage(byte[] message){
+        return message[0] & 0xff << 24
+        |
+        message[1] & 0xff << 16
+        |
+        message[2] & 0xff << 8
+        |
+        message[3] & 0xff;
+    }
 
 
     public static byte[] buildHandshakeMessage(byte[] hash){
@@ -680,7 +732,7 @@ public class Main {
         return main.new Reference<T>(v);
     }
 
-    public enum MessageType {
+    public enum PeerMessageType {
         BITFIELD(5),
         INTERESTED(2),
         UNCHOKE(1),
@@ -689,7 +741,7 @@ public class Main {
 
         private final int id;
 
-        MessageType(int id){
+        PeerMessageType(int id){
             this.id = id;
         }
 
@@ -698,48 +750,48 @@ public class Main {
         }
     }
 
-    public interface PeerMessage {
+    // public interface PeerMessage {
+    //
+    //     int getLength();
+    //
+    //     default int extractLength(byte[] message){
+    //         return message[0] & 0xff << 24
+    //         |
+    //         message[1] & 0xff << 16
+    //         |
+    //         message[2] & 0xff << 8
+    //         |
+    //         message[3] & 0xff;
+    //     }
+    //
+    //     MessageType getId();
+    //
+    //     Map getPayload();
+    // }
 
-        int getLength();
-
-        default int extractLength(byte[] message){
-            return message[0] & 0xff << 24
-            |
-            message[1] & 0xff << 16
-            |
-            message[2] & 0xff << 8
-            |
-            message[3] & 0xff;
-        }
-
-        MessageType getId();
-
-        Map getPayload();
-    }
-
-    public final class BitFieldMessage implements PeerMessage {
-        private byte[] rawMessage;
-        private int length;
-
-        private BitFieldMessage(byte[] message){
-            this.rawMessage = message;
-        };
-
-        @Override
-        public int getLength() {
-            return this.length;
-        }
-
-        @Override
-        public Main.MessageType getId() {
-            return MessageType.BITFIELD;
-        }
-
-        @Override
-        public Map getPayload() {
-            return null;
-        }
-    }
+    // public final class BitFieldMessage implements PeerMessage {
+    //     private byte[] rawMessage;
+    //     private int length;
+    //
+    //     private BitFieldMessage(byte[] message){
+    //         this.rawMessage = message;
+    //     };
+    //
+    //     @Override
+    //     public int getLength() {
+    //         return this.length;
+    //     }
+    //
+    //     @Override
+    //     public Main.MessageType getId() {
+    //         return MessageType.BITFIELD;
+    //     }
+    //
+    //     @Override
+    //     public Map getPayload() {
+    //         return null;
+    //     }
+    // }
 
     // I am not conviced hereditariety is beneficial here, sometimes I need to build with the byte array,
     // sometimes I need the opposite, sometimes I get the message and sometimes I have to send it
