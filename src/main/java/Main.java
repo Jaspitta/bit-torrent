@@ -680,34 +680,102 @@ public class Main {
         return main.new Reference<T>(v);
     }
 
-    // this is probably a good place for an abstract class
-    private final class PeerMessage {
-        final Integer length;
-        final byte id;
-        final Map payload;
+    public enum MessageType {
+        BITFIELD(5),
+        INTERESTED(2),
+        UNCHOKE(1),
+        REQUEST(6),
+        PIECE(7);
 
-        PeerMessage(byte[] message){
-            assert message != null && message.length >= 5;
+        private final int id;
 
-            // 4 bytes as big endian
-            this.length = Integer.valueOf(
-                message[0] & 0xff << 24
-                |
-                message[1] & 0xff << 16
-                |
-                message[2] & 0xff << 8
-                |
-                message[3] & 0xff
-            );
-
-            id = message[4];
-            this.payload = buildPayload(Arrays.copyOfRange(message, 5, message.length), this.id);
+        MessageType(int id){
+            this.id = id;
         }
 
-        private Map buildPayload(byte[] payload, final byte id){
-            return switch(id){
-                default -> null;
-            };
+        public int getId(){
+            return this.id;
         }
     }
+
+    public interface PeerMessage {
+
+        int getLength();
+
+        default int extractLength(byte[] message){
+            return message[0] & 0xff << 24
+            |
+            message[1] & 0xff << 16
+            |
+            message[2] & 0xff << 8
+            |
+            message[3] & 0xff;
+        }
+
+        MessageType getId();
+
+        Map getPayload();
+    }
+
+    public final class BitFieldMessage implements PeerMessage {
+        private byte[] rawMessage;
+        private int length;
+
+        private BitFieldMessage(byte[] message){
+            this.rawMessage = message;
+        };
+
+        @Override
+        public int getLength() {
+            return this.length;
+        }
+
+        @Override
+        public Main.MessageType getId() {
+            return MessageType.BITFIELD;
+        }
+
+        @Override
+        public Map getPayload() {
+            return null;
+        }
+    }
+
+    // I am not conviced hereditariety is beneficial here, sometimes I need to build with the byte array,
+    // sometimes I need the opposite, sometimes I get the message and sometimes I have to send it
+    //
+    // this is probably a good place for an abstract class
+    // private abstract class PeerMessage {
+    //     final Integer length;
+    //     final byte id;
+    //
+    //     PeerMessage(byte[] message){
+    //         assert message != null && message.length >= 5;
+    //
+    //         // 4 bytes as big endian
+    //         this.length = Integer.valueOf(
+    //             message[0] & 0xff << 24
+    //             |
+    //             message[1] & 0xff << 16
+    //             |
+    //             message[2] & 0xff << 8
+    //             |
+    //             message[3] & 0xff
+    //         );
+    //
+    //         id = message[4];
+    //     }
+    // }
+    //
+    // private final class BitFieldMessage extends PeerMessage {
+    //     BitFieldMessage(byte[] message){
+    //         super(message);
+    //     }
+    // }
+    //
+    // private final class InterestedMessage extends PeerMessage {
+    //     InterestedMessage(byte[] message){
+    //         super(message);
+    //     }
+    // }
 }
