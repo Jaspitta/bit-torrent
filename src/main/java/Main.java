@@ -30,6 +30,7 @@ public class Main {
     private static final Main main = new Main();
     private static final String HASH_TYPE = "SHA-1";
     private static final int HANDSHAKE_SIZE = 68;
+    private static final int BLOCK_SIZE = (int)Math.pow(2, 14);
 
     public static void main(String[] args) throws Exception {
         switch(args[0]){
@@ -147,7 +148,7 @@ public class Main {
                 assert args[1] == "-o";
                 assert args[2] != null && !"".equals(args[2]);
                 assert args[3] != null && !"".equals(args[3]);
-                assert args[3] != null && !"".equals(args[3]);
+                assert args[4] != null && !"".equals(args[4]);
 
                 // download_piece -o output_file torrent_file piece_index
 
@@ -158,6 +159,7 @@ public class Main {
 
                 // get peers
                 Object info = extractElement((Map<String, Object>)formattedFileContent, "info");
+                Long pieceLength = extractElement((Map<String, Long>)info, "piece length");
 
                 var hash = calculateHash(encodeMessage(info));
                 var peerReq = createPeerRequest(
@@ -182,6 +184,8 @@ public class Main {
                 var ip = formatIp(peer);
                 try(var clientSocket = new Socket(ip.getKey(), ip.getValue())){
 
+                    // TODO: think how to implement this with parallelization/pipelining
+
                     var outStream = clientSocket.getOutputStream();
                     outStream.write(buildHandshakeMessage(hash));
 
@@ -203,7 +207,14 @@ public class Main {
                     // index -> from input
                     // 0 -> increments of 2^14
                     // length min between 2^14 and bytes left
-
+// All later integers sent in the protocol are encoded as four bytes big-endian.
+                    for(int i = 0; i < pieceLength; i += BLOCK_SIZE){
+                        var id = (byte)PeerMessageType.REQUEST.id;
+                        var index = intTo4ByteBE(Integer.valueOf(args[4]));
+                        var begin = intTo4ByteBE(i); // 1 byte not enough
+                        var blockLength = intTo4ByteBE((int)Math.min(BLOCK_SIZE, pieceLength - i));
+                        var length = intTo4ByteBE(1 /*id*/ + index.length + begin.length + blockLength.length);
+                    }
 
                 }
 
@@ -266,6 +277,20 @@ public class Main {
             default:
             throw new RuntimeException("unsupported operation");
         }
+    }
+
+    // java uses 2's complements
+    // positive nums have first bit to 0
+    public static byte[] intTo4ByteBE(int num){
+        if(num == 0) return new byte[]{0,0,0,0};
+        if(Integer.MAX_VALUE == num) return new byte[]{1,1,1,1};
+
+        return new byte[]{
+            (byte) (num & 0xff),
+            (byte) ((num >> 8) & 0xff),
+            (byte) ((num >> 16) & 0xff),
+            (byte) ((num >> 24) & 0xff),
+        };
     }
 
     public static byte[] buildInterestedMessage(){
