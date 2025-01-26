@@ -145,7 +145,7 @@ public class Main {
             break;
             case "download_piece": {
                 assert args != null;
-                assert args[1] == "-o";
+                assert "-o".equals(args[1]);
                 assert args[2] != null && !"".equals(args[2]);
                 assert args[3] != null && !"".equals(args[3]);
                 assert args[4] != null && !"".equals(args[4]);
@@ -186,6 +186,7 @@ public class Main {
 
                     // TODO: think how to implement this with parallelization/pipelining
 
+                    // unless specified otherwise each message integer is 4 bytes BE
                     var outStream = clientSocket.getOutputStream();
                     outStream.write(buildHandshakeMessage(hash));
 
@@ -211,9 +212,11 @@ public class Main {
                     for(int i = 0; i < pieceLength; i += BLOCK_SIZE){
                         var id = (byte)PeerMessageType.REQUEST.id;
                         var index = intTo4ByteBE(Integer.valueOf(args[4]));
-                        var begin = intTo4ByteBE(i); // 1 byte not enough
+                        var begin = intTo4ByteBE(i);
                         var blockLength = intTo4ByteBE((int)Math.min(BLOCK_SIZE, pieceLength - i));
                         var length = intTo4ByteBE(1 /*id*/ + index.length + begin.length + blockLength.length);
+                        outStream.write( combineArrays(length, new byte[]{id}, index, begin, blockLength));
+                        assert readNextMessage(inStream)[4] == PeerMessageType.REQUEST.id;
                     }
 
                 }
@@ -279,6 +282,22 @@ public class Main {
         }
     }
 
+    public static byte[] combineArrays(byte[]... arrs){
+        if(arrs == null) return null;
+        int totalLength = 0;
+        for(byte[] arr : arrs) totalLength += arr.length;
+
+        byte[] resp = new byte[totalLength];
+        int nextSlot = 0;
+        for(byte[] arr : arrs){
+            for(byte b : arr){
+                resp[nextSlot] = b;
+                nextSlot++;
+            }
+        }
+        return resp;
+    }
+
     // java uses 2's complements
     // positive nums have first bit to 0
     public static byte[] intTo4ByteBE(int num){
@@ -312,7 +331,7 @@ public class Main {
 
         var remainingMessage = inStream.readNBytes(length);
 
-        for(int i = 0; i < message.length; i++) message[i+4] = remainingMessage[i];
+        for(int i = 0; i < remainingMessage.length; i++) message[i+4] = remainingMessage[i];
 
         return message;
     }
@@ -365,7 +384,7 @@ public class Main {
         var separatorIndex = address.indexOf(':');
         return Map.entry(
             address.substring(0, separatorIndex),
-            Integer.valueOf(address.substring(separatorIndex-1, address.length()))
+            Integer.valueOf(address.substring(separatorIndex+1, address.length()))
         );
     }
 
