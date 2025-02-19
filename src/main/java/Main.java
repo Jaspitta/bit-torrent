@@ -208,15 +208,15 @@ public class Main {
                     // index -> from input
                     // 0 -> increments of 2^14
                     // length min between 2^14 and bytes left
-// All later integers sent in the protocol are encoded as four bytes big-endian.
+                    // All later integers sent in the protocol are encoded as four bytes big-endian.
                     for(int i = 0; i < pieceLength; i += BLOCK_SIZE){
                         var id = (byte)PeerMessageType.REQUEST.id;
                         var index = intTo4ByteBE(Integer.valueOf(args[4]));
                         var begin = intTo4ByteBE(i);
                         var blockLength = intTo4ByteBE((int)Math.min(BLOCK_SIZE, pieceLength - i));
-                        var length = intTo4ByteBE(1 /*id*/ + index.length + begin.length + blockLength.length);
-                        outStream.write( combineArrays(length, new byte[]{id}, index, begin, blockLength));
-                        assert readNextMessage(inStream)[4] == PeerMessageType.REQUEST.id;
+                        var length = intTo4ByteBE(1 /*id*/+ index.length + begin.length + blockLength.length);
+                        outStream.write(combineArrays(length, new byte[]{id},/*paload -> */ index, begin, blockLength));
+                        assert readNextMessage(inStream)[4] == PeerMessageType.PIECE.id;
                     }
 
                 }
@@ -305,16 +305,16 @@ public class Main {
         if(Integer.MAX_VALUE == num) return new byte[]{1,1,1,1};
 
         return new byte[]{
-            (byte) (num & 0xff),
-            (byte) ((num >> 8) & 0xff),
-            (byte) ((num >> 16) & 0xff),
-            (byte) ((num >> 24) & 0xff),
+            (byte) ((num & 0xffffffff) >>> 24),
+            (byte) ((num & 0xffffffff) >>> 16),
+            (byte) ((num & 0xffffffff) >>> 8),
+            (byte) (num & 0xffffffff),
         };
     }
 
     public static byte[] buildInterestedMessage(){
         return new byte[]{
-            0,0,0,5, // length
+            0,0,0,1, // length
             2 // id
             // payload is empty
         };
@@ -324,7 +324,7 @@ public class Main {
         assert inStream != null;
 
         var rawLength = inStream.readNBytes(4);
-        var length = extractLengthFromPeerMessage(rawLength);
+        var length = fourByteBeToInt(rawLength);
 
         var message = new byte[length + 4];
         for(int i = 0; i < 4; i++) message[i] = rawLength[i];
@@ -336,14 +336,15 @@ public class Main {
         return message;
     }
 
-    public static int extractLengthFromPeerMessage(byte[] message){
-        return message[0] & 0xff << 24
+    public static int fourByteBeToInt(byte[] message){
+        assert message.length >= 4;
+        return ((message[0] & 0xff) << 24)
         |
-        message[1] & 0xff << 16
+        ((message[1] & 0xff) << 16)
         |
-        message[2] & 0xff << 8
+        ((message[2] & 0xff) << 8)
         |
-        message[3] & 0xff;
+        ((message[3] & 0xff));
     }
 
 
