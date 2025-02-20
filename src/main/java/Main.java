@@ -305,10 +305,10 @@ public class Main {
         if(Integer.MAX_VALUE == num) return new byte[]{1,1,1,1};
 
         return new byte[]{
-            (byte) ((num & 0xffffffff) >>> 24),
-            (byte) ((num & 0xffffffff) >>> 16),
-            (byte) ((num & 0xffffffff) >>> 8),
-            (byte) (num & 0xffffffff),
+            (byte) ((num >>> 24) & 0xff),
+            (byte) ((num >>> 16) & 0xff),
+            (byte) ((num >>> 8) & 0xff),
+            (byte) (num & 0xff),
         };
     }
 
