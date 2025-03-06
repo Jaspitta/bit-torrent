@@ -190,7 +190,7 @@ public class Main {
 
                     // TODO: think how to implement this with parallelization/pipelining
 
-                    // unless specified otherwise each message integer is 4 bytes BE
+                    // unless specified otherwise each message integer is 4 bytes BE, except the 1 byte id
                     var outStream = clientSocket.getOutputStream();
                     outStream.write(buildHandshakeMessage(hash));
 
@@ -232,60 +232,6 @@ public class Main {
 
                 }
 
-
-                // peer messages
-                    // length (4)
-                    // id (1)
-                    // payload (variable)
-
-
-                // wait for bitfield message
-                    // id = 5
-                    // payload = pieces available, ignore for now
-                // send interested message
-                    // id = 2
-                    // payload empty
-                // wait for unchoke
-                    // id = 1
-                    // payload empty
-                // request message -> can be parallel
-                    // id = 6
-                    // payload
-                        // index of the piece
-                        // begin byte (based on the block)
-                        // length of block
-                // wait piece message
-                    // id = 7
-                    // payload
-                        // index of piece
-                        // begin byte
-                        // block data
-
-                // file     -> piece        -> blocks
-                // length   -> piece lenght  -> 2^14 (last is piece length % 2^14)
-                // blocks can be requested in parallel
-
-
-                // combine blocks
-                // verify piece hash
-
-            }
-            break;
-            case "test": {
-                // JUST FOR TESTING
-                String fileName = args[1];
-                byte[] fileAsByteArr = Files.readAllBytes(Paths.get(fileName));
-                var md = MessageDigest.getInstance("SHA-1");
-                md.update(fileAsByteArr);
-                System.out.println("hash from file is: " + byteArrayToHexString(md.digest()));
-
-                var index = main.getNewReference(0);
-                md = MessageDigest.getInstance("SHA-1");
-
-                var encodedMessage = formatToString(decodeMessage(fileAsByteArr, index), Set.of("announce", "info"));
-                md = MessageDigest.getInstance("SHA-1");
-                md.update(encodeMessage(extractElement((Map<String, Object>)encodedMessage, "info")));
-                System.out.println("hash from decoded/encoded message: " + byteArrayToHexString(md.digest()));
             }
             break;
             default:
@@ -806,84 +752,4 @@ public class Main {
         }
     }
 
-    // public interface PeerMessage {
-    //
-    //     int getLength();
-    //
-    //     default int extractLength(byte[] message){
-    //         return message[0] & 0xff << 24
-    //         |
-    //         message[1] & 0xff << 16
-    //         |
-    //         message[2] & 0xff << 8
-    //         |
-    //         message[3] & 0xff;
-    //     }
-    //
-    //     MessageType getId();
-    //
-    //     Map getPayload();
-    // }
-
-    // public final class BitFieldMessage implements PeerMessage {
-    //     private byte[] rawMessage;
-    //     private int length;
-    //
-    //     private BitFieldMessage(byte[] message){
-    //         this.rawMessage = message;
-    //     };
-    //
-    //     @Override
-    //     public int getLength() {
-    //         return this.length;
-    //     }
-    //
-    //     @Override
-    //     public Main.MessageType getId() {
-    //         return MessageType.BITFIELD;
-    //     }
-    //
-    //     @Override
-    //     public Map getPayload() {
-    //         return null;
-    //     }
-    // }
-
-    // I am not conviced hereditariety is beneficial here, sometimes I need to build with the byte array,
-    // sometimes I need the opposite, sometimes I get the message and sometimes I have to send it
-    //
-    // this is probably a good place for an abstract class
-    // private abstract class PeerMessage {
-    //     final Integer length;
-    //     final byte id;
-    //
-    //     PeerMessage(byte[] message){
-    //         assert message != null && message.length >= 5;
-    //
-    //         // 4 bytes as big endian
-    //         this.length = Integer.valueOf(
-    //             message[0] & 0xff << 24
-    //             |
-    //             message[1] & 0xff << 16
-    //             |
-    //             message[2] & 0xff << 8
-    //             |
-    //             message[3] & 0xff
-    //         );
-    //
-    //         id = message[4];
-    //     }
-    // }
-    //
-    // private final class BitFieldMessage extends PeerMessage {
-    //     BitFieldMessage(byte[] message){
-    //         super(message);
-    //     }
-    // }
-    //
-    // private final class InterestedMessage extends PeerMessage {
-    //     InterestedMessage(byte[] message){
-    //         super(message);
-    //     }
-    // }
 }
