@@ -1,3 +1,6 @@
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.Socket;
@@ -160,6 +163,7 @@ public class Main {
                 // get peers
                 Object info = extractElement((Map<String, Object>)formattedFileContent, "info");
                 Long pieceLength = extractElement((Map<String, Long>)info, "piece length");
+                var piecesHashes = arrToMatrix((extractElement((Map<String, byte[]>)info, "pieces")), 20);
 
                 var hash = calculateHash(encodeMessage(info));
                 var peerReq = createPeerRequest(
@@ -209,6 +213,7 @@ public class Main {
                     // 0 -> increments of 2^14
                     // length min between 2^14 and bytes left
                     // All later integers sent in the protocol are encoded as four bytes big-endian.
+                    byte[] piece = new byte[pieceLength.intValue()];
                     for(int i = 0; i < pieceLength; i += BLOCK_SIZE){
                         var id = (byte)PeerMessageType.REQUEST.id;
                         var index = intTo4ByteBE(Integer.valueOf(args[4]));
@@ -216,8 +221,14 @@ public class Main {
                         var blockLength = intTo4ByteBE((int)Math.min(BLOCK_SIZE, pieceLength - i));
                         var length = intTo4ByteBE(1 /*id*/+ index.length + begin.length + blockLength.length);
                         outStream.write(combineArrays(length, new byte[]{id},/*paload -> */ index, begin, blockLength));
-                        assert readNextMessage(inStream)[4] == PeerMessageType.PIECE.id;
+                        byte[] pieceMessage = readNextMessage(inStream);
+                        assert pieceMessage[4] == PeerMessageType.PIECE.id;
+                        for(int j = 13 /*l + id + ind + begin*/; j < pieceMessage.length; j++) piece[i + j - 13] = pieceMessage[j];
                     }
+
+                    assert Arrays.compare(piecesHashes[Integer.valueOf(args[4])], calculateHash(piece)) == 0;
+
+                    try(var writer = new FileOutputStream(new File(args[2]))) {writer.write(piece);}
 
                 }
 
@@ -474,7 +485,7 @@ public class Main {
         assert size != null;
         assert size > 0;
 
-        var resp = new byte[hashes.length % size == 0 ? hashes.length / size : (hashes.length / size) + 1][size];
+        var resp = new byte[(int)Math.ceil(hashes.length / size)][size];
         for(int i = 0; i < hashes.length; i++){
             resp[i / size][i % size] = hashes[i];
         }
