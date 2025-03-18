@@ -292,7 +292,7 @@ public class Main {
             inStream,
             piecesHashes[i]
           );
-          try(var writer = new FileOutputStream(new File(args[2]))) {writer.write(piece);}
+            Files.write(Paths.get(args[2]), piece, StandardOpenOption.APPEND);
           }
 
 
