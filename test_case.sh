@@ -5,9 +5,9 @@ do
 	java -ea -jar ./target/java_bittorrent.jar "decode" "$input"
 done
 
-java -ea -jar ./target/java_bittorrent.jar "test" "sample.torrent"
 java -ea -jar ./target/java_bittorrent.jar "info" "sample.torrent"
 java -ea -jar ./target/java_bittorrent.jar "peers" "sample.torrent"
 java -ea -jar ./target/java_bittorrent.jar "handshake" "sample.torrent" "165.232.41.73:51556"
 
 java -ea -jar ./target/java_bittorrent.jar "download_piece" "-o" "./test-piece" "sample.torrent" 0
+java -ea -jar ./target/java_bittorrent.jar "download" "-o" "./test-file" "sample.torrent"
